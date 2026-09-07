@@ -38,7 +38,7 @@ export const AppInstallModal: React.FC<AppInstallModalProps> = ({
   profile,
   weeklyPlan,
 }) => {
-  const [activeTab, setActiveTab] = useState<'android' | 'samsung' | 'ios' | 'qr' | 'backup'>('android');
+  const [activeTab, setActiveTab] = useState<'apk' | 'android' | 'samsung' | 'ios' | 'qr' | 'backup'>('apk');
   const [isInstalling, setIsInstalling] = useState(false);
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
@@ -220,6 +220,19 @@ export const AppInstallModal: React.FC<AppInstallModalProps> = ({
 
           {/* Nav Tabs */}
           <div className="flex border-b border-slate-800 bg-slate-950/60 px-3 pt-2.5 gap-1.5 overflow-x-auto no-scrollbar">
+            <button
+              id="tab-install-apk"
+              onClick={() => setActiveTab('apk')}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-t-xl text-xs font-bold transition-all border-t border-x whitespace-nowrap ${
+                activeTab === 'apk'
+                  ? 'bg-slate-900 border-cyan-700 text-cyan-400 shadow-sm'
+                  : 'border-transparent text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Android APK</span>
+            </button>
+
             <button
               id="tab-install-android"
               onClick={() => setActiveTab('android')}
@@ -478,6 +491,31 @@ export const AppInstallModal: React.FC<AppInstallModalProps> = ({
                       </div>
                     </li>
                   </ol>
+                </div>
+              </div>
+            )}
+
+            {/* TAB: Direct APK Download */}
+            {activeTab === 'apk' && (
+              <div className="space-y-4 text-center">
+                <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col items-center justify-center">
+                  <div className="p-4 rounded-full bg-cyan-950 border-2 border-cyan-500/50 shadow-xl shadow-cyan-950/60 mb-3 text-cyan-400">
+                    <Download className="w-10 h-10" />
+                  </div>
+                  <h3 className="font-extrabold text-white text-sm">
+                    Скачать Android APK
+                  </h3>
+                  <p className="text-xs text-slate-400 max-w-xs mt-1 mb-4">
+                    Установите приложение напрямую из скомпилированного APK файла. Это самый быстрый способ получить приложение с уведомлениями на Android.
+                  </p>
+                  <a
+                    href="/schedule-app.apk"
+                    download="EgoFlex-Schedule.apk"
+                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-cyan-500/30 flex items-center justify-center gap-2 transition-all active:scale-95"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Скачать APK (9.2 MB)</span>
+                  </a>
                 </div>
               </div>
             )}
