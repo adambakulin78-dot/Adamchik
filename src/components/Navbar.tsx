@@ -4,6 +4,7 @@ import {
   Award,
   Activity,
   Calendar,
+  Clock,
   BarChart3,
   MessageSquare,
   Volume2,
@@ -17,8 +18,8 @@ import { UserProfile } from '../types';
 import { soundFx } from '../utils/audio';
 
 interface NavbarProps {
-  currentTab: 'plan' | 'analytics' | 'coach' | 'assessment';
-  setCurrentTab: (tab: 'plan' | 'analytics' | 'coach' | 'assessment') => void;
+  currentTab: 'schedule' | 'plan' | 'analytics' | 'coach' | 'assessment';
+  setCurrentTab: (tab: 'schedule' | 'plan' | 'analytics' | 'coach' | 'assessment') => void;
   profile: UserProfile;
   soundEnabled: boolean;
   setSoundEnabled: (val: boolean) => void;
@@ -75,6 +76,17 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Desktop Navigation Links */}
         <nav className="hidden md:flex items-center gap-1 bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800/80 shadow-inner">
+          <button
+            id="nav-tab-schedule"
+            onClick={() => setCurrentTab('schedule')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              currentTab === 'schedule'
+                ? 'bg-gradient-to-r from-cyan-400 to-cyan-500 text-slate-950 shadow-md shadow-cyan-500/30'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <Clock className="w-4 h-4" /> График
+          </button>
           <button
             id="nav-tab-plan"
             onClick={() => setCurrentTab('plan')}
@@ -205,7 +217,16 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       {/* Mobile Tab Navigation */}
-      <div className="grid grid-cols-4 gap-1 md:hidden mt-2.5 pt-2 border-t border-slate-800/60 text-center">
+      <div className="grid grid-cols-5 gap-1 md:hidden mt-2.5 pt-2 border-t border-slate-800/60 text-center">
+        <button
+          onClick={() => setCurrentTab('schedule')}
+          className={`flex flex-col items-center gap-1 text-[10px] font-bold py-1.5 rounded-xl transition-all ${
+            currentTab === 'schedule' ? 'bg-cyan-950/80 text-cyan-300 border border-cyan-500/40' : 'text-slate-400'
+          }`}
+        >
+          <Clock className="w-4 h-4" />
+          <span>График</span>
+        </button>
         <button
           onClick={() => setCurrentTab('plan')}
           className={`flex flex-col items-center gap-1 text-[10px] font-bold py-1.5 rounded-xl transition-all ${

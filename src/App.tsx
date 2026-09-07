@@ -41,6 +41,8 @@ import { AppInstallModal } from './components/AppInstallModal';
 import { ExerciseTechniqueModal } from './components/ExerciseTechniqueModal';
 import { CloudSyncModal } from './components/CloudSyncModal';
 import { FullAppBackup } from './utils/storage';
+import { ScheduleView } from './components/ScheduleView';
+import { requestNotificationPermissions, scheduleTaskNotifications } from './utils/notifications';
 
 export default function App() {
   const [profile, setProfile] = useState<UserProfile>(loadUserProfile);
@@ -50,7 +52,7 @@ export default function App() {
   const [progressLogs, setProgressLogs] = useState<ProgressLog[]>(loadProgressLogs);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(loadChatHistory);
 
-  const [currentTab, setCurrentTab] = useState<'plan' | 'analytics' | 'coach' | 'assessment'>('plan');
+  const [currentTab, setCurrentTab] = useState<'schedule' | 'plan' | 'analytics' | 'coach' | 'assessment'>('schedule');
   const [activeWorkout, setActiveWorkout] = useState<WorkoutDay | null>(null);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [showSamsungHealthModal, setShowSamsungHealthModal] = useState<boolean>(false);
@@ -344,6 +346,19 @@ export default function App() {
     }
   };
 
+  useEffect(() => {
+    // Initialize notifications and schedule them
+    const initNotifications = async () => {
+      try {
+        await requestNotificationPermissions();
+        await scheduleTaskNotifications();
+      } catch (err) {
+        console.warn('Notifications setup failed, possibly not running on a mobile device:', err);
+      }
+    };
+    initNotifications();
+  }, []);
+
   // Samsung Health refresh sync
   const handleSyncSamsungHealth = async () => {
     const freshData = getStoredSamsungHealth();
@@ -386,6 +401,18 @@ export default function App() {
       {/* Main Tab Screens with Smooth Animation */}
       <main className="flex-1 pb-16">
         <AnimatePresence mode="wait">
+          {currentTab === 'schedule' && (
+            <motion.div
+              key="tab-schedule"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.25 }}
+            >
+              <ScheduleView />
+            </motion.div>
+          )}
+
           {currentTab === 'plan' && (
             <motion.div
               key="tab-plan"
