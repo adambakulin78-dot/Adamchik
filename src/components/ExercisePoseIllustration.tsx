@@ -1,0 +1,1943 @@
+import React, { useState } from 'react';
+
+export interface ExercisePoseIllustrationProps {
+  exerciseId?: string;
+  exerciseName: string;
+  category?: string;
+  targetMuscleOrSkill?: string;
+  targetMuscle?: string; // backwards compatibility
+  className?: string;
+  size?: 'sm' | 'md' | 'lg';
+  phase?: 1 | 2 | 'both';
+}
+
+export type PoseKey =
+  | 'lizard_lunge'
+  | 'couch_stretch'
+  | 'half_kneeling_lunge'
+  | 'hamstring_lying_strap'
+  | 'hamstring_seated_fold'
+  | 'stork_balance'
+  | 'warrior_3_airplane'
+  | 'single_leg_reach'
+  | 'pigeon_sleeping'
+  | 'cat_cow'
+  | 'calf_ankle_raise'
+  | 'standing_cars_hip'
+  | 'seated_90_90'
+  | 'front_split'
+  | 'middle_split'
+  | 'pancake_straddle'
+  | 'butterfly'
+  | 'frog_pose'
+  | 'warrior_2'
+  | 'dancer_pose'
+  | 'camel_pose'
+  | 'downward_dog'
+  | 'cobra_updog'
+  | 'star_excursion'
+  | 'deep_squat_malasana'
+  | 'revolved_lunge'
+  | 'ankle_dorsiflexion'
+  | 'happy_baby'
+  | 'supine_twist'
+  | 'plank_balance'
+  | 'child_pose'
+  | 'savasana'
+  | 'pistol_squat'
+  | 'cossack_squat'
+  | 'bridge_pose'
+  | 'legs_up_wall'
+  | 'wall_sit'
+  | 'general_balance'
+  | 'general_flexibility';
+
+export interface PoseMeta {
+  title: string;
+  phase1Title: string;
+  phase1Cue: string;
+  phase2Title: string;
+  phase2Cue: string;
+}
+
+/**
+ * Direct ID dictionary for 100% deterministic, zero-confusion exercise mapping
+ */
+const EXERCISE_ID_TO_POSE: Record<string, PoseKey> = {
+  'd1-w1': 'calf_ankle_raise',
+  'd1-w2': 'cat_cow',
+  'd1-w3': 'half_kneeling_lunge',
+  'd1-m1': 'hamstring_lying_strap',
+  'd1-m2': 'lizard_lunge',
+  'd1-m3': 'hamstring_seated_fold',
+  'd1-m4': 'stork_balance',
+  'd1-m5': 'warrior_3_airplane',
+  'd1-m6': 'single_leg_reach',
+  'd1-c1': 'pigeon_sleeping',
+  'd1-c2': 'supine_twist',
+
+  'd2-w1': 'standing_cars_hip',
+  'd2-w2': 'seated_90_90',
+  'd2-w3': 'supine_twist',
+  'd2-m1': 'butterfly',
+  'd2-m2': 'frog_pose',
+  'd2-m3': 'pancake_straddle',
+  'd2-m4': 'pistol_squat',
+  'd2-m5': 'plank_balance',
+  'd2-m6': 'front_split',
+  'd2-c1': 'happy_baby',
+  'd2-c2': 'legs_up_wall',
+
+  'd3-w1': 'half_kneeling_lunge',
+  'd3-w2': 'standing_cars_hip',
+  'd3-w3': 'stork_balance',
+  'd3-m1': 'stork_balance',
+  'd3-m2': 'star_excursion',
+  'd3-m3': 'couch_stretch',
+  'd3-m4': 'warrior_3_airplane',
+  'd3-m5': 'calf_ankle_raise',
+  'd3-m6': 'calf_ankle_raise',
+  'd3-c1': 'calf_ankle_raise',
+  'd3-c2': 'child_pose',
+
+  'd4-w1': 'ankle_dorsiflexion',
+  'd4-w2': 'cat_cow',
+  'd4-w3': 'deep_squat_malasana',
+  'd4-m1': 'front_split',
+  'd4-m2': 'warrior_2',
+  'd4-m3': 'camel_pose',
+  'd4-m4': 'stork_balance',
+  'd4-m5': 'couch_stretch',
+  'd4-m6': 'plank_balance',
+  'd4-c1': 'cobra_updog',
+  'd4-c2': 'savasana',
+
+  'd5-w1': 'calf_ankle_raise',
+  'd5-w2': 'standing_cars_hip',
+  'd5-w3': 'camel_pose',
+  'd5-m1': 'middle_split',
+  'd5-m2': 'stork_balance',
+  'd5-m3': 'revolved_lunge',
+  'd5-m4': 'warrior_3_airplane',
+  'd5-m5': 'pigeon_sleeping',
+  'd5-m6': 'stork_balance',
+  'd5-c1': 'supine_twist',
+  'd5-c2': 'savasana',
+
+  'd6-w1': 'cat_cow',
+  'd6-w2': 'cossack_squat',
+  'd6-w3': 'camel_pose',
+  'd6-m1': 'front_split',
+  'd6-m2': 'dancer_pose',
+  'd6-m3': 'camel_pose',
+  'd6-m4': 'stork_balance',
+  'd6-m5': 'pigeon_sleeping',
+  'd6-m6': 'plank_balance',
+  'd6-c1': 'bridge_pose',
+  'd6-c2': 'savasana',
+
+  'd7-w1': 'downward_dog',
+  'd7-w2': 'deep_squat_malasana',
+  'd7-w3': 'stork_balance',
+  'd7-m1': 'middle_split',
+  'd7-m2': 'stork_balance',
+  'd7-m3': 'pancake_straddle',
+  'd7-m4': 'warrior_3_airplane',
+  'd7-m5': 'pigeon_sleeping',
+  'd7-m6': 'pistol_squat',
+  'd7-c1': 'supine_twist',
+  'd7-c2': 'savasana',
+};
+
+export function detectPoseKey(
+  name: string = '',
+  targetMuscle: string = '',
+  category: string = '',
+  exerciseId: string = ''
+): PoseKey {
+  // 1. Direct ID match if available
+  if (exerciseId && EXERCISE_ID_TO_POSE[exerciseId]) {
+    return EXERCISE_ID_TO_POSE[exerciseId];
+  }
+
+  const n = (name || '').toLowerCase();
+  const tm = (targetMuscle || '').toLowerCase();
+  const c = (category || '').toLowerCase();
+
+  // 2. High-specificity name matching to eliminate visual confusion
+  if (n.includes('счастлив') || n.includes('happy baby') || n.includes('ананда баласан')) {
+    return 'happy_baby';
+  }
+
+  if (
+    n.includes('шавасан') ||
+    n.includes('savasana') ||
+    n.includes('shavasana') ||
+    n.includes('декомпрессия диафрагмы') ||
+    n.includes('медитация метавидения') ||
+    n.includes('перерождение атлета') ||
+    n.includes('невесомост')
+  ) {
+    return 'savasana';
+  }
+
+  if (n.includes('поза ребенка') || n.includes('позе ребенка') || n.includes('child pose') || n.includes('баласан')) {
+    return 'child_pose';
+  }
+
+  if (n.includes('ноги на стене') || n.includes('ног на стене') || n.includes('випарита карани') || n.includes('viparita')) {
+    return 'legs_up_wall';
+  }
+
+  if (n.includes('позе моста') || n.includes('поза моста') || n.includes('ягодичный мост') || n.includes('glute bridge') || n.includes('bridge')) {
+    return 'bridge_pose';
+  }
+
+  if (n.includes('пистолетик') || n.includes('pistol squat') || (n.includes('присед') && n.includes('одной ноге'))) {
+    return 'pistol_squat';
+  }
+
+  if (n.includes('казачь') || n.includes('cossack') || n.includes('боковой выпад') || n.includes('side lunge')) {
+    return 'cossack_squat';
+  }
+
+  if (n.includes('присед у стены') || n.includes('wall sit')) {
+    return 'wall_sit';
+  }
+
+  if (n.includes('планк') || n.includes('plank')) {
+    return 'plank_balance';
+  }
+
+  if (
+    n.includes('открытие книги') ||
+    (n.includes('скрутк') && n.includes('лежа')) ||
+    n.includes('матсиендрасан') ||
+    n.includes('фасциальная скрутка') ||
+    n.includes('spiral') ||
+    n.includes('supta')
+  ) {
+    return 'supine_twist';
+  }
+
+  // Quad stretch (must precede frog to prevent "Frog Kick Stretch" confusion)
+  if (
+    n.includes('диван') ||
+    n.includes('couch') ||
+    n.includes('frog kick') ||
+    (n.includes('квадрицепс') && (n.includes('стен') || n.includes('захват') || n.includes('живот') || n.includes('лежа')))
+  ) {
+    return 'couch_stretch';
+  }
+
+  // Pure frog stretch
+  if ((n.includes('лягушк') || n.includes('frog')) && !n.includes('kick') && !n.includes('квадрицепс')) {
+    return 'frog_pose';
+  }
+
+  // Lizard
+  if (n.includes('ящериц') || n.includes('lizard')) {
+    return 'lizard_lunge';
+  }
+
+  // Revolved Lunge
+  if (n.includes('выпад') && (n.includes('ротац') || n.includes('скрутк') || n.includes('twist'))) {
+    return 'revolved_lunge';
+  }
+
+  // Half Kneeling Lunge
+  if (n.includes('полувыпад') || (n.includes('выпад') && (n.includes('90/90') || n.includes('сгибател') || n.includes('пружинящ')))) {
+    return 'half_kneeling_lunge';
+  }
+
+  // Splits
+  if (n.includes('поперечн') || n.includes('middle split') || n.includes('самаконасан')) {
+    return 'middle_split';
+  }
+  if (n.includes('продольн') || n.includes('front split') || n.includes('хануманасан') || n.includes('полушпагат') || (n.includes('шпагат') && !n.includes('поперечн'))) {
+    return 'front_split';
+  }
+
+  // Straddle fold
+  if (n.includes('блинчик') || n.includes('pancake') || (n.includes('складка') && n.includes('широк')) || (n.includes('наклон') && n.includes('широк'))) {
+    return 'pancake_straddle';
+  }
+
+  // Butterfly
+  if (n.includes('бабочк') || n.includes('butterfly') || n.includes('баддха')) {
+    return 'butterfly';
+  }
+
+  // Cat cow
+  if (n.includes('кошк') || n.includes('коров') || n.includes('cat-cow') || n.includes('волна позвоноч')) {
+    return 'cat_cow';
+  }
+
+  // Seated 90/90
+  if (n.includes('90/90') || n.includes('перекаты в седе') || (n.includes('сед') && n.includes('ротац')) || n.includes('hip flips')) {
+    return 'seated_90_90';
+  }
+
+  // Pigeon
+  if (n.includes('голуб') || n.includes('pigeon') || n.includes('спящ') || n.includes('игольное ушко') || n.includes('figure four') || n.includes('гомокхасан') || n.includes('cow face')) {
+    return 'pigeon_sleeping';
+  }
+
+  // Standing CARs
+  if (n.includes('cars') || n.includes('восьмерк') || (n.includes('тбс') && (n.includes('вращен') || n.includes('кругов') || n.includes('сумо')))) {
+    return 'standing_cars_hip';
+  }
+
+  // Warrior 3 / Airplane
+  if (
+    n.includes('ласточк') ||
+    n.includes('воин iii') ||
+    n.includes('воин 3') ||
+    n.includes('воине iii') ||
+    n.includes('воине 3') ||
+    n.includes('самолет') ||
+    n.includes('airplane') ||
+    n.includes('warrior iii') ||
+    n.includes('warrior 3') ||
+    (n.includes('воин') && n.includes('наклон'))
+  ) {
+    return 'warrior_3_airplane';
+  }
+
+  // Warrior 2
+  if (n.includes('воин ii') || n.includes('воин 2') || n.includes('воине ii') || n.includes('воине 2') || n.includes('warrior ii') || n.includes('warrior 2')) {
+    return 'warrior_2';
+  }
+
+  // Stork balance
+  if (
+    n.includes('аист') ||
+    n.includes('stork') ||
+    n.includes('стойка на одной') ||
+    n.includes('цапл') ||
+    n.includes('дерев') ||
+    n.includes('vestibular') ||
+    n.includes('вестибулярн') ||
+    (n.includes('баланс') && n.includes('одной ноге') && !n.includes('reach'))
+  ) {
+    return 'stork_balance';
+  }
+
+  // Single leg reach
+  if (n.includes('касанием пола') || n.includes('single leg reach') || n.includes('тяга на одной') || (n.includes('rdl') && n.includes('баланс'))) {
+    return 'single_leg_reach';
+  }
+
+  // Calf / foot
+  if (
+    n.includes('носок') ||
+    n.includes('носк') ||
+    n.includes('плантарн') ||
+    n.includes('апоневроз') ||
+    n.includes('гусениц') ||
+    (n.includes('голеностоп') && (n.includes('подъем') || n.includes('вращен') || n.includes('разминка') || n.includes('растяжка')))
+  ) {
+    return 'calf_ankle_raise';
+  }
+
+  // Ankle dorsiflexion
+  if (n.includes('дорсифлекс') || (n.includes('ахилл') && n.includes('стен')) || (n.includes('голеностоп') && n.includes('стен'))) {
+    return 'ankle_dorsiflexion';
+  }
+
+  // Dancer
+  if (n.includes('танцор') || n.includes('dancer') || n.includes('натарадж')) {
+    return 'dancer_pose';
+  }
+
+  // Camel & Chest
+  if (n.includes('верблюд') || n.includes('camel') || n.includes('уштрасан') || n.includes('раскрытие плечевого') || n.includes('вращения прямыми руками')) {
+    return 'camel_pose';
+  }
+
+  // Star excursion
+  if (n.includes('звезд') || n.includes('star excursion')) {
+    return 'star_excursion';
+  }
+
+  // Deep squat / Malasana
+  if (n.includes('маласан') || (n.includes('присед') && (n.includes('глубок') || n.includes('сумо'))) || n.includes('крадущийся тигр')) {
+    return 'deep_squat_malasana';
+  }
+
+  // Cobra
+  if (n.includes('кобр') || n.includes('сфинкс') || n.includes('собака мордой вверх') || n.includes('cobra') || n.includes('updog')) {
+    return 'cobra_updog';
+  }
+
+  // Downward dog & Surya
+  if (n.includes('собака мордой вниз') || n.includes('downward dog') || n.includes('сурья') || n.includes('солнцу')) {
+    return 'downward_dog';
+  }
+
+  // Hamstrings
+  if (n.includes('пашчимоттан') || (n.includes('складка') && n.includes('сидя')) || (n.includes('наклон к прямым') && n.includes('сидя'))) {
+    return 'hamstring_seated_fold';
+  }
+  if (n.includes('подколен') || n.includes('hamstring') || n.includes('задней поверхност')) {
+    return 'hamstring_lying_strap';
+  }
+
+  // 3. Fallbacks by target muscle
+  if (tm.includes('сгибатели бедра') && tm.includes('квадрицепс')) return 'couch_stretch';
+  if (tm.includes('приводящие') || tm.includes('аддуктор')) return 'middle_split';
+  if (tm.includes('грушевидн') || tm.includes('ягодиц')) return 'pigeon_sleeping';
+  if (tm.includes('голеностоп') || tm.includes('стоп') || tm.includes('икр')) return 'calf_ankle_raise';
+  if (tm.includes('подколен') || tm.includes('задняя поверхност')) return 'hamstring_lying_strap';
+  if (tm.includes('грудн') || tm.includes('спин')) return 'camel_pose';
+
+  // 4. Category fallback
+  if (c === 'balance' || n.includes('баланс')) return 'stork_balance';
+  return 'general_flexibility';
+}
+
+export const POSE_METADATA: Record<PoseKey, PoseMeta> = {
+  lizard_lunge: {
+    title: 'Выпад Ящерицы (Lizard Pose)',
+    phase1Title: 'Фаза 1: Широкий выпад & Опора',
+    phase1Cue: 'Широкий шаг, руки внутри стопы, колено над пяткой',
+    phase2Title: 'Фаза 2: Глубокое погружение ТБС',
+    phase2Cue: 'Опускание на предплечья, расслабление таза к полу',
+  },
+  couch_stretch: {
+    title: 'Растяжка квадрицепса у стены (Couch Stretch)',
+    phase1Title: 'Фаза 1: Голень у стены & Опора руками',
+    phase1Cue: 'Колено близко к плинтусу, голень вертикально',
+    phase2Title: 'Фаза 2: Вертикальный корпус & Сжатие ягодицы',
+    phase2Cue: 'Таз подкручен, корпус выпрямлен, мощный стретч бедра',
+  },
+  half_kneeling_lunge: {
+    title: 'Мобилизация ТБС в полувыпаде 90/90',
+    phase1Title: 'Фаза 1: Нейтраль 90° в коленях',
+    phase1Cue: 'Вертикальный корпус, оба колена согнуты под 90°',
+    phase2Title: 'Фаза 2: Подача таза вперед & Рука вверх',
+    phase2Cue: 'Задний наклон таза, раскрытие подвздошно-поясничной',
+  },
+  hamstring_lying_strap: {
+    title: 'PNF-растяжка подколенных лежа с ремнем',
+    phase1Title: 'Фаза 1: Исходная фиксация ноги',
+    phase1Cue: 'Спина на полу, нога поднята с ремнем на стопе',
+    phase2Title: 'Фаза 2: Изометрия 6с & Углубление угла',
+    phase2Cue: 'Давление пяткой в ремень, на выдохе наклон к лицу',
+  },
+  hamstring_seated_fold: {
+    title: 'Глубокий наклон сидя (Пашчимоттанасана)',
+    phase1Title: 'Фаза 1: Прямой сед (Дандасана)',
+    phase1Cue: 'Седалищные бугры прижаты, стопы натянуты, спина прямая',
+    phase2Title: 'Фаза 2: Проворот в ТБС & Живот на бедра',
+    phase2Cue: 'Наклон от таза без горба в спине, захват за стопы',
+  },
+  stork_balance: {
+    title: 'Стойка Аиста (Single Leg Stork Balance)',
+    phase1Title: 'Фаза 1: Тренога стопы & Старт',
+    phase1Cue: 'Распределение веса на три точки опорной стопы',
+    phase2Title: 'Фаза 2: Бедро 90° & Фиксация взгляда/глаза закрыты',
+    phase2Cue: 'Колено поднято до 90°, вертикальная ось тела',
+  },
+  warrior_3_airplane: {
+    title: 'Баланс в ласточке / Воин III',
+    phase1Title: 'Фаза 1: Перенос веса на опорную ногу',
+    phase1Cue: 'Мягкое колено, наклон корпуса вперед с прямой спиной',
+    phase2Title: 'Фаза 2: Горизонтальная линия "Т"',
+    phase2Cue: 'Таз закрыт, корпус и нога параллельны полу',
+  },
+  single_leg_reach: {
+    title: 'Баланс с касанием пола (Single Leg Reach)',
+    phase1Title: 'Фаза 1: Одноопорная стойка',
+    phase1Cue: 'Плечи расправлены, легкий сгиб в опорном колене',
+    phase2Title: 'Фаза 2: Тазово-доминантный наклон',
+    phase2Cue: 'Рука тянется к полу, задняя нога вытягивается в струну',
+  },
+  pigeon_sleeping: {
+    title: 'Поза Спящего Голубя (Pigeon Pose)',
+    phase1Title: 'Фаза 1: Упор руками & Выравнивание таза',
+    phase1Cue: 'Передняя голень согнута, задняя нога вытянута назад',
+    phase2Title: 'Фаза 2: Опускание корпуса вперед на предплечья',
+    phase2Cue: 'Полное снятие тонуса с грушевидной и ягодичной мышц',
+  },
+  cat_cow: {
+    title: 'Кошка-Корова в динамике',
+    phase1Title: 'Фаза 1: Корова (Вдох - прогиб)',
+    phase1Cue: 'Грудь раскрыта вперед, копчик и взгляд направлены вверх',
+    phase2Title: 'Фаза 2: Кошка (Выдох - купол спины)',
+    phase2Cue: 'Спина округлена вверх, пупок втянут к позвоночнику',
+  },
+  calf_ankle_raise: {
+    title: 'Подъем на носки & Мобильность стопы',
+    phase1Title: 'Фаза 1: Опора на всю стопу',
+    phase1Cue: 'Стопы параллельно на ширине таза, ровная осанка',
+    phase2Title: 'Фаза 2: Пиковый подъем на подушечки пальцев',
+    phase2Cue: 'Сжатие икр и ахилла без завала стопы наружу/внутрь',
+  },
+  standing_cars_hip: {
+    title: 'Суставные вращения в ТБС стоя (CARs)',
+    phase1Title: 'Фаза 1: Подъем бедра перед собой',
+    phase1Cue: 'Колено подтянуто к груди, таз зафиксирован',
+    phase2Title: 'Фаза 2: Отвод бедра вбок и ротация назад',
+    phase2Cue: 'Круговая траектория без наклона и раскачки корпуса',
+  },
+  seated_90_90: {
+    title: 'Сед 90/90 & Ротация бедер',
+    phase1Title: 'Фаза 1: Позиция 90/90 (упор сзади)',
+    phase1Cue: 'Переднее и заднее бедро согнуты строго под 90°',
+    phase2Title: 'Фаза 2: Наклон к передней голени / Перекат',
+    phase2Cue: 'Проворот в капсуле сустава без скругления поясницы',
+  },
+  front_split: {
+    title: 'Продольный шпагат (Front Split)',
+    phase1Title: 'Фаза 1: Полушпагат (Half-Split опора)',
+    phase1Cue: 'Передняя нога прямая на пятке, таз над задним коленом',
+    phase2Title: 'Фаза 2: Полное продольное раскрытие',
+    phase2Cue: 'Таз ровный, ноги вытянуты в единую прямую линию',
+  },
+  middle_split: {
+    title: 'Поперечный шпагат (Middle Split)',
+    phase1Title: 'Фаза 1: Широкая стойка с опорой на руки',
+    phase1Cue: 'Стопы параллельны, руки на полу поддерживают вес',
+    phase2Title: 'Фаза 2: Раскрытие аддукторов на 180°',
+    phase2Cue: 'Таз на одной линии со стопами, плавное погружение',
+  },
+  pancake_straddle: {
+    title: 'Наклон Блинчик в широком седе (Pancake)',
+    phase1Title: 'Фаза 1: Широкий сед с прямой спиной',
+    phase1Cue: 'Ноги широко разведены, колени и носки смотрят вверх',
+    phase2Title: 'Фаза 2: Плавный наклон вперед грудью к полу',
+    phase2Cue: 'Проворот таза вперед, руки скользят вперед по полу',
+  },
+  butterfly: {
+    title: 'Поза Бабочки (Baddha Konasana)',
+    phase1Title: 'Фаза 1: Стопы соединены, захват руками',
+    phase1Cue: 'Пятки близко к паху, спина вертикальная',
+    phase2Title: 'Фаза 2: Колени к полу & Мягкий наклон',
+    phase2Cue: 'Активное расслабление приводящих мышц паха',
+  },
+  frog_pose: {
+    title: 'Поза Лягушки (Frog Pose)',
+    phase1Title: 'Фаза 1: Четвереньки с широкими коленями',
+    phase1Cue: 'Колени и стопы разведены наружу под углом 90°',
+    phase2Title: 'Фаза 2: Смещение таза назад на предплечьях',
+    phase2Cue: 'Глубокая PNF-растяжка внутренних поверхностей бедер',
+  },
+  warrior_2: {
+    title: 'Поза Воина II (Warrior II)',
+    phase1Title: 'Фаза 1: Широкий шаг, руки в стороны',
+    phase1Cue: 'Передняя стопа вперед, задняя под углом 90°',
+    phase2Title: 'Фаза 2: Выпад 90° в колене & Взгляд вперед',
+    phase2Cue: 'Таз раскрыт, колено над лодыжкой, руки на высоте плеч',
+  },
+  dancer_pose: {
+    title: 'Поза Танцора (Natarajasana)',
+    phase1Title: 'Фаза 1: Захват стопы сзади на одной ноге',
+    phase1Cue: 'Колени вместе, баланс на опорной ноге, рука вперед',
+    phase2Title: 'Фаза 2: Толчок стопы назад и вверх',
+    phase2Cue: 'Прогиб в грудном отделе, корпус наклоняется вперед',
+  },
+  camel_pose: {
+    title: 'Поза Верблюда (Ustrasana)',
+    phase1Title: 'Фаза 1: Стойка на коленях, руки на крестце',
+    phase1Cue: 'Колени на ширине таза, бедра строго вертикальны',
+    phase2Title: 'Фаза 2: Прогиб назад, ладони на пятках',
+    phase2Cue: 'Грудь раскрыта в потолок, таз выталкивается вперед',
+  },
+  downward_dog: {
+    title: 'Собака мордой вниз (Downward Dog)',
+    phase1Title: 'Фаза 1: Планка / Упор на коленях',
+    phase1Cue: 'Ладони под плечами, пальцы широко расставлены',
+    phase2Title: 'Фаза 2: Треугольник: копчик вверх, пятки вниз',
+    phase2Cue: 'Прямая спина от ладоней до таза, растяжение задней цепи',
+  },
+  cobra_updog: {
+    title: 'Поза Кобры / Собака мордой вверх',
+    phase1Title: 'Фаза 1: Лежа на животе, ладони под плечами',
+    phase1Cue: 'Стопы на подъемах, локти прижаты к корпусу',
+    phase2Title: 'Фаза 2: Подъем грудной клетки на вдохе',
+    phase2Cue: 'Плечи опущены вниз от ушей, мягкая дуга в позвоночнике',
+  },
+  star_excursion: {
+    title: 'Звезда баланса (Star Excursion)',
+    phase1Title: 'Фаза 1: Центральный одноопорный баланс',
+    phase1Cue: 'Стабильная ось опорной ноги, руки на поясе',
+    phase2Title: 'Фаза 2: Касание носком в 8 направлениях',
+    phase2Cue: 'Контроль стабильности колена без завала внутрь',
+  },
+  deep_squat_malasana: {
+    title: 'Глубокий присед Маласана',
+    phase1Title: 'Фаза 1: Стойка чуть шире плеч, носки врозь',
+    phase1Cue: 'Прямой корпус, подготовка к опусканию таза',
+    phase2Title: 'Фаза 2: Полный присед, локти расталкивают колени',
+    phase2Cue: 'Пятки на полу, ладони у сердца, спина прямая',
+  },
+  revolved_lunge: {
+    title: 'Скрутка в выпаде (Revolved Lunge)',
+    phase1Title: 'Фаза 1: Низкий выпад с руками на полу',
+    phase1Cue: 'Переднее колено 90°, задняя нога вытянута',
+    phase2Title: 'Фаза 2: Ротация корпуса, рука в потолок',
+    phase2Cue: 'Взгляд на верхнюю ладонь, раскрытие грудного отдела',
+  },
+  ankle_dorsiflexion: {
+    title: 'Дорсифлексия у стены (Ankle Mobilization)',
+    phase1Title: 'Фаза 1: Стопа 10 см от стены',
+    phase1Cue: 'Пятка прижата, руки упираются в стену',
+    phase2Title: 'Фаза 2: Касание колена стены без отрыва пятки',
+    phase2Cue: 'Натяжение камбаловидной мышцы и ахиллова сухожилия',
+  },
+  happy_baby: {
+    title: 'Поза Счастливого Ребенка (Happy Baby)',
+    phase1Title: 'Фаза 1: Спина на полу & Захват стоп',
+    phase1Cue: 'Колени согнуты к подмышкам, ладони держат внешние края стоп',
+    phase2Title: 'Фаза 2: Стопы в потолок 90° & Мягкая тяга вниз',
+    phase2Cue: 'Крестец прижат к полу, глубокое расслабление ТБС и поясницы',
+  },
+  supine_twist: {
+    title: 'Скрутка позвоночника лежа (Супта Матсиендрасана)',
+    phase1Title: 'Фаза 1: Спина на полу, руки буквой "Т"',
+    phase1Cue: 'Колени согнуты под 90° над тазом, лопатки плотно прижаты к полу',
+    phase2Title: 'Фаза 2: Опускание коленей вбок & Ротация грудного отдела',
+    phase2Cue: 'Мягкая декомпрессия позвоночника, взгляд в противоположную сторону',
+  },
+  plank_balance: {
+    title: 'Баланс в планке & Стабилизация кора',
+    phase1Title: 'Фаза 1: Классическая планка на предплечьях/ладонях',
+    phase1Cue: 'Прямая струна от пяток до макушки, нейтраль таза и пресса',
+    phase2Title: 'Фаза 2: Подъем ноги/руки & Антиротационный баланс',
+    phase2Cue: 'Удержание нейтрали без перекоса таза и прогиба в пояснице',
+  },
+  child_pose: {
+    title: 'Поза Ребенка (Баласана)',
+    phase1Title: 'Фаза 1: Сед на пятках, колени слегка врозь',
+    phase1Cue: 'Спина прямая, подготовка к плавному наклону вперед',
+    phase2Title: 'Фаза 2: Вытяжение рук вперед & Лоб к полу',
+    phase2Cue: 'Декомпрессия широчайших мышц спины и расслабление шейного отдела',
+  },
+  savasana: {
+    title: 'Шавасана & Восстановление диафрагмы',
+    phase1Title: 'Фаза 1: Положение на спине, нейтраль тела',
+    phase1Cue: 'Ноги и руки свободно разведены, ладони смотрят вверх, глаза закрыты',
+    phase2Title: 'Фаза 2: Полная фасциальная релаксация',
+    phase2Cue: 'Медленное диафрагмальное дыхание, перезагрузка ЦНС атлета',
+  },
+  pistol_squat: {
+    title: 'Присед Пистолетик (Single Leg Squat)',
+    phase1Title: 'Фаза 1: Стойка на одной ноге, вторая вперед',
+    phase1Cue: 'Опорная стопа стабильна, руки вытянуты вперед для баланса',
+    phase2Title: 'Фаза 2: Глубокий контролируемый присед',
+    phase2Cue: 'Свободная нога параллельна полу, мощный подъем от опорной пятки',
+  },
+  cossack_squat: {
+    title: 'Казачий присед / Боковой выпад (Cossack Squat)',
+    phase1Title: 'Фаза 1: Широкая стойка, стопы развернуты',
+    phase1Cue: 'Широкое положение ног, корпус вертикальный, руки у груди',
+    phase2Title: 'Фаза 2: Глубокий присед на одну ногу & Носок вверх',
+    phase2Cue: 'Опорная пятка на полу, прямая нога на пятке, растяжка приводящих',
+  },
+  bridge_pose: {
+    title: 'Поза Моста & Декомпрессия позвоночника',
+    phase1Title: 'Фаза 1: Лежа на спине, стопы у таза',
+    phase1Cue: 'Колени на ширине таза, руки вдоль корпуса ладонями вниз',
+    phase2Title: 'Фаза 2: Выталкивание таза вверх & Активация ягодиц',
+    phase2Cue: 'Прямая линия от коленей до плеч, раскрытие передней фасциальной цепи',
+  },
+  legs_up_wall: {
+    title: 'Випарита Карани (Ноги на стене)',
+    phase1Title: 'Фаза 1: Таз вплотную к стене, корпус на полу',
+    phase1Cue: 'Удобное расположение крестца у стены, колени согнуты',
+    phase2Title: 'Фаза 2: Прямые ноги вверх по стене & Релакс',
+    phase2Cue: 'Венозный отток, расслабление подколенных сухожилий и поясницы',
+  },
+  wall_sit: {
+    title: 'Изометрический присед у стены (Wall Sit)',
+    phase1Title: 'Фаза 1: Спина прижата к стене, стопы вперед',
+    phase1Cue: 'Лопатки и крестец касаются стены, стопы на ширине плеч',
+    phase2Title: 'Фаза 2: Опускание до угла 90-100° в коленях',
+    phase2Cue: 'Бедра параллельны полу, мощная изометрия четырехглавых мышц',
+  },
+  general_balance: {
+    title: 'Комплекс вестибулярного баланса',
+    phase1Title: 'Фаза 1: Исходная устойчивость & Центр тяжести',
+    phase1Cue: 'Нейтральная стойка, активация мышц кора и стопы',
+    phase2Title: 'Фаза 2: Удержание равновесия на одной ноге',
+    phase2Cue: 'Микростабилизация свода стопы, фокус внимания',
+  },
+  general_flexibility: {
+    title: 'Комплекс биомеханической гибкости',
+    phase1Title: 'Фаза 1: Исходное безопасное положение',
+    phase1Cue: 'Выравнивание костей и подготовка суставов',
+    phase2Title: 'Фаза 2: Контролируемый вход в натяжение',
+    phase2Cue: 'Дыхание диафрагмой, глубокое расслабление фасций',
+  },
+};
+
+/**
+ * Render precise Phase 1 SVG graphics
+ */
+function renderPhase1Svg(poseKey: PoseKey) {
+  switch (poseKey) {
+    case 'lizard_lunge':
+      return (
+        <g>
+          {/* Ground */}
+          <line x1="15" y1="95" x2="185" y2="95" stroke="#334155" strokeWidth="2" strokeDasharray="3 3" />
+          {/* Back leg extended high runner lunge */}
+          <path d="M 35 95 L 75 75 L 110 75" stroke="#94a3b8" strokeWidth="5" fill="none" strokeLinecap="round" />
+          {/* Front leg 90 deg */}
+          <path d="M 110 75 L 140 75 L 140 95" stroke="#38bdf8" strokeWidth="5.5" fill="none" strokeLinecap="round" />
+          {/* Torso angled */}
+          <path d="M 110 75 L 130 55" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          <circle cx="136" cy="48" r="7" fill="#38bdf8" />
+          {/* Hands on ground framing foot */}
+          <path d="M 125 60 L 135 95" stroke="#cbd5e1" strokeWidth="3.5" strokeLinecap="round" />
+          <path d="M 120 62 L 115 95" stroke="#94a3b8" strokeWidth="3" strokeLinecap="round" />
+          <text x="100" y="108" fill="#94a3b8" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Выпад: ладони на полу, таз высокий
+          </text>
+        </g>
+      );
+
+    case 'couch_stretch':
+      return (
+        <g>
+          <line x1="35" y1="20" x2="35" y2="95" stroke="#64748b" strokeWidth="4" />
+          <line x1="20" y1="95" x2="180" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Back shin on wall, knee on floor */}
+          <path d="M 40 92 L 38 52" stroke="#94a3b8" strokeWidth="5" strokeLinecap="round" />
+          <circle cx="40" cy="92" r="4.5" fill="#f43f5e" />
+          <path d="M 40 92 L 75 80" stroke="#94a3b8" strokeWidth="5" strokeLinecap="round" />
+          {/* Front foot forward, hands supporting on floor */}
+          <path d="M 75 80 L 115 80 L 115 95" stroke="#38bdf8" strokeWidth="5" fill="none" strokeLinecap="round" />
+          {/* Low torso with hands down */}
+          <path d="M 75 80 L 95 65" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          <circle cx="100" cy="58" r="7" fill="#38bdf8" />
+          <path d="M 90 70 L 95 95" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
+          <text x="100" y="108" fill="#94a3b8" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Исходное: колено у стены, опора на руки
+          </text>
+        </g>
+      );
+
+    case 'half_kneeling_lunge':
+      return (
+        <g>
+          <line x1="25" y1="95" x2="175" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Back knee down 90 deg */}
+          <path d="M 60 95 L 60 65 L 90 65" stroke="#94a3b8" strokeWidth="5" fill="none" strokeLinecap="round" />
+          {/* Front leg 90 deg */}
+          <path d="M 90 65 L 125 65 L 125 95" stroke="#38bdf8" strokeWidth="5" fill="none" strokeLinecap="round" />
+          {/* Upright torso */}
+          <path d="M 90 65 L 90 35" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          <circle cx="90" cy="27" r="7" fill="#38bdf8" />
+          {/* Hands on hips */}
+          <path d="M 90 45 L 80 55" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
+          <path d="M 90 45 L 100 55" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
+          <text x="100" y="108" fill="#94a3b8" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Оба колена 90°, ровная осанка
+          </text>
+        </g>
+      );
+
+    case 'hamstring_lying_strap':
+      return (
+        <g>
+          <line x1="20" y1="92" x2="180" y2="92" stroke="#334155" strokeWidth="2" />
+          {/* Supine body */}
+          <path d="M 45 88 L 115 88" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          <circle cx="38" cy="85" r="7" fill="#38bdf8" />
+          {/* Non-target leg flat */}
+          <path d="M 115 88 L 165 88" stroke="#64748b" strokeWidth="5" strokeLinecap="round" />
+          {/* Target leg raised at 45 deg */}
+          <path d="M 115 88 L 145 55" stroke="#38bdf8" strokeWidth="5.5" strokeLinecap="round" />
+          {/* Strap in hands */}
+          <path d="M 85 85 L 105 70" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
+          <line x1="105" y1="70" x2="145" y2="55" stroke="#f59e0b" strokeWidth="2" strokeDasharray="2 2" />
+          <text x="100" y="108" fill="#94a3b8" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Начало: нога на ремне под 45-60°
+          </text>
+        </g>
+      );
+
+    case 'hamstring_seated_fold':
+      return (
+        <g>
+          <line x1="20" y1="92" x2="180" y2="92" stroke="#334155" strokeWidth="2" />
+          {/* Legs straight forward */}
+          <path d="M 55 88 L 150 88" stroke="#94a3b8" strokeWidth="5.5" strokeLinecap="round" />
+          <path d="M 150 88 L 150 78" stroke="#38bdf8" strokeWidth="4" strokeLinecap="round" />
+          {/* Tall upright torso (Dandasana) */}
+          <path d="M 55 88 L 55 45" stroke="#06b6d4" strokeWidth="6.5" strokeLinecap="round" />
+          <circle cx="55" cy="36" r="7.5" fill="#38bdf8" />
+          {/* Hands by hips */}
+          <path d="M 55 55 L 65 88" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
+          <text x="100" y="108" fill="#94a3b8" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Исходное: Дандасана, 90° в тазу
+          </text>
+        </g>
+      );
+
+    case 'stork_balance':
+    case 'general_balance':
+      return (
+        <g>
+          <line x1="40" y1="95" x2="160" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Standing on two feet, preparing */}
+          <path d="M 90 95 L 90 60" stroke="#06b6d4" strokeWidth="5.5" strokeLinecap="round" />
+          <path d="M 110 95 L 110 60" stroke="#94a3b8" strokeWidth="5" strokeLinecap="round" />
+          <path d="M 90 60 L 110 60" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          {/* Spine & Head */}
+          <path d="M 100 60 L 100 30" stroke="#06b6d4" strokeWidth="6.5" strokeLinecap="round" />
+          <circle cx="100" cy="22" r="7.5" fill="#38bdf8" />
+          {/* Arms relaxed or at sides */}
+          <path d="M 100 40 L 80 55" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
+          <path d="M 100 40 L 120 55" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
+          <text x="100" y="108" fill="#94a3b8" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Подготовка: поиск баланса на стопе
+          </text>
+        </g>
+      );
+
+    case 'warrior_3_airplane':
+      return (
+        <g>
+          <line x1="30" y1="95" x2="170" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Standing front leg */}
+          <path d="M 105 95 L 105 60" stroke="#06b6d4" strokeWidth="5.5" strokeLinecap="round" />
+          {/* Rear toe lightly on floor behind */}
+          <path d="M 105 60 L 60 95" stroke="#94a3b8" strokeWidth="4.5" strokeLinecap="round" />
+          {/* Torso slightly angled forward */}
+          <path d="M 105 60 L 125 35" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          <circle cx="130" cy="28" r="7" fill="#38bdf8" />
+          {/* Arms at chest prayer */}
+          <path d="M 115 45 L 125 50" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
+          <text x="100" y="108" fill="#94a3b8" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Исходное: вес на передней ноге
+          </text>
+        </g>
+      );
+
+    case 'single_leg_reach':
+      return (
+        <g>
+          <line x1="30" y1="95" x2="170" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Standing on one leg upright */}
+          <path d="M 95 95 L 95 58" stroke="#06b6d4" strokeWidth="5.5" strokeLinecap="round" />
+          {/* Other leg hanging soft */}
+          <path d="M 95 58 L 80 85" stroke="#94a3b8" strokeWidth="4.5" strokeLinecap="round" />
+          {/* Upright spine */}
+          <path d="M 95 58 L 95 28" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          <circle cx="95" cy="20" r="7.5" fill="#38bdf8" />
+          {/* Arms at sides */}
+          <path d="M 95 38 L 80 55" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
+          <path d="M 95 38 L 110 55" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
+          <text x="100" y="108" fill="#94a3b8" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Исходное: вертикаль на одной ноге
+          </text>
+        </g>
+      );
+
+    case 'pigeon_sleeping':
+      return (
+        <g>
+          <line x1="20" y1="95" x2="180" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Front leg folded under, back leg long */}
+          <path d="M 90 90 L 125 90 L 110 82" stroke="#94a3b8" strokeWidth="5" fill="none" strokeLinecap="round" />
+          <path d="M 90 90 L 35 92" stroke="#94a3b8" strokeWidth="5" strokeLinecap="round" />
+          {/* Torso upright proud pigeon on hands */}
+          <path d="M 100 85 L 110 48" stroke="#06b6d4" strokeWidth="6.5" strokeLinecap="round" />
+          <circle cx="112" cy="38" r="7.5" fill="#38bdf8" />
+          {/* Support hands on ground */}
+          <path d="M 105 60 L 95 88" stroke="#cbd5e1" strokeWidth="3.5" strokeLinecap="round" />
+          <path d="M 105 60 L 125 88" stroke="#cbd5e1" strokeWidth="3.5" strokeLinecap="round" />
+          <text x="100" y="108" fill="#94a3b8" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Гордый голубь: опора на ладони
+          </text>
+        </g>
+      );
+
+    case 'cat_cow':
+      return (
+        <g>
+          <line x1="20" y1="95" x2="180" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Arms and Thighs vertical */}
+          <path d="M 60 95 L 60 65" stroke="#94a3b8" strokeWidth="5" strokeLinecap="round" />
+          <path d="M 140 95 L 140 65" stroke="#94a3b8" strokeWidth="5" strokeLinecap="round" />
+          {/* Spine dipped downward (Cow) */}
+          <path d="M 60 65 Q 100 80 140 65" stroke="#06b6d4" strokeWidth="6" fill="none" strokeLinecap="round" />
+          {/* Head looking up */}
+          <path d="M 140 65 L 155 50" stroke="#06b6d4" strokeWidth="5" strokeLinecap="round" />
+          <circle cx="160" cy="45" r="7" fill="#38bdf8" />
+          <text x="100" y="108" fill="#38bdf8" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Фаза Корова: вдох, прогиб спины
+          </text>
+        </g>
+      );
+
+    case 'calf_ankle_raise':
+      return (
+        <g>
+          <line x1="30" y1="95" x2="170" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Standing flat on heels and toes */}
+          <path d="M 95 95 L 95 55" stroke="#06b6d4" strokeWidth="5.5" strokeLinecap="round" />
+          <path d="M 105 95 L 105 55" stroke="#06b6d4" strokeWidth="5.5" strokeLinecap="round" />
+          <circle cx="95" cy="95" r="3" fill="#38bdf8" />
+          <circle cx="105" cy="95" r="3" fill="#38bdf8" />
+          {/* Torso & Head */}
+          <path d="M 100 55 L 100 25" stroke="#06b6d4" strokeWidth="6.5" strokeLinecap="round" />
+          <circle cx="100" cy="18" r="7.5" fill="#38bdf8" />
+          <text x="100" y="108" fill="#94a3b8" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Исходное: стопы плотно на полу
+          </text>
+        </g>
+      );
+
+    case 'middle_split':
+    case 'pancake_straddle':
+    case 'frog_pose':
+      return (
+        <g>
+          <line x1="15" y1="95" x2="185" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Wide straddle legs */}
+          <path d="M 60 95 L 100 65 L 140 95" stroke="#94a3b8" strokeWidth="5.5" fill="none" strokeLinecap="round" />
+          {/* Torso upright */}
+          <path d="M 100 65 L 100 35" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          <circle cx="100" cy="27" r="7" fill="#38bdf8" />
+          {/* Hands down for balance */}
+          <path d="M 100 45 L 85 75" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
+          <path d="M 100 45 L 115 75" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
+          <text x="100" y="108" fill="#94a3b8" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Исходное: широкая стойка с опорой
+          </text>
+        </g>
+      );
+
+    case 'front_split':
+      return (
+        <g>
+          <line x1="20" y1="95" x2="180" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Half-split: back knee 90 deg, front leg extended forward on heel */}
+          <path d="M 60 95 L 60 70 L 95 70" stroke="#94a3b8" strokeWidth="5" fill="none" strokeLinecap="round" />
+          <path d="M 95 70 L 145 92" stroke="#38bdf8" strokeWidth="5.5" strokeLinecap="round" />
+          {/* Torso hinged over front thigh */}
+          <path d="M 95 70 L 115 55" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          <circle cx="122" cy="48" r="7" fill="#38bdf8" />
+          <path d="M 110 60 L 125 90" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
+          <text x="100" y="108" fill="#94a3b8" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Подготовка: полушпагат на колене
+          </text>
+        </g>
+      );
+
+    case 'happy_baby':
+      return (
+        <g>
+          <line x1="20" y1="92" x2="180" y2="92" stroke="#334155" strokeWidth="2" />
+          {/* Lying on back */}
+          <path d="M 45 88 L 120 88" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          <circle cx="36" cy="85" r="7" fill="#38bdf8" />
+          {/* Knees bent to chest */}
+          <path d="M 120 88 L 105 58 L 95 45" stroke="#94a3b8" strokeWidth="5" fill="none" strokeLinecap="round" />
+          {/* Hands holding feet */}
+          <path d="M 75 82 L 95 45" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
+          <text x="100" y="108" fill="#94a3b8" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Исходное: колени подтянуты к груди
+          </text>
+        </g>
+      );
+
+    case 'supine_twist':
+      return (
+        <g>
+          <line x1="20" y1="92" x2="180" y2="92" stroke="#334155" strokeWidth="2" />
+          {/* Spine flat, head relaxed */}
+          <path d="M 40 88 L 110 88" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          <circle cx="32" cy="85" r="7" fill="#38bdf8" />
+          {/* Arms out in T */}
+          <line x1="65" y1="88" x2="65" y2="58" stroke="#cbd5e1" strokeWidth="3.5" strokeLinecap="round" />
+          {/* Knees at 90 deg above hips */}
+          <path d="M 110 88 L 110 52 L 140 52" stroke="#94a3b8" strokeWidth="5.5" fill="none" strokeLinecap="round" />
+          <text x="100" y="108" fill="#94a3b8" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Позиция Т: колени 90° над тазом
+          </text>
+        </g>
+      );
+
+    case 'plank_balance':
+      return (
+        <g>
+          <line x1="15" y1="95" x2="185" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Classic straight plank on forearms */}
+          <path d="M 40 92 L 150 72" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          <circle cx="158" cy="68" r="7" fill="#38bdf8" />
+          {/* Forearm support */}
+          <path d="M 140 73 L 140 95 L 155 95" stroke="#cbd5e1" strokeWidth="4" fill="none" strokeLinecap="round" />
+          {/* Feet grounded */}
+          <circle cx="40" cy="92" r="3.5" fill="#38bdf8" />
+          <text x="100" y="108" fill="#94a3b8" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Базовая планка: прямая линия от пяток до макушки
+          </text>
+        </g>
+      );
+
+    case 'child_pose':
+      return (
+        <g>
+          <line x1="20" y1="95" x2="180" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Kneeling upright on shins */}
+          <path d="M 50 95 L 85 95 L 85 62" stroke="#94a3b8" strokeWidth="5.5" fill="none" strokeLinecap="round" />
+          <path d="M 85 62 L 85 30" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          <circle cx="85" cy="22" r="7.5" fill="#38bdf8" />
+          <path d="M 85 45 L 75 70" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
+          <text x="100" y="108" fill="#94a3b8" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Исходное: сед на пятках, ровный корпус
+          </text>
+        </g>
+      );
+
+    case 'savasana':
+      return (
+        <g>
+          <line x1="15" y1="92" x2="185" y2="92" stroke="#334155" strokeWidth="2" />
+          {/* Completely relaxed supine pose */}
+          <path d="M 35 88 L 165 88" stroke="#06b6d4" strokeWidth="5.5" strokeLinecap="round" />
+          <circle cx="28" cy="85" r="7" fill="#38bdf8" />
+          {/* Gentle hand resting outward */}
+          <path d="M 75 88 L 78 72" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
+          <text x="100" y="108" fill="#94a3b8" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Нейтральное положение: выравнивание позвоночника
+          </text>
+        </g>
+      );
+
+    case 'pistol_squat':
+      return (
+        <g>
+          <line x1="25" y1="95" x2="175" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Standing on one leg */}
+          <path d="M 90 95 L 90 55" stroke="#06b6d4" strokeWidth="5.5" strokeLinecap="round" />
+          <path d="M 90 55 L 90 25" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          <circle cx="90" cy="18" r="7.5" fill="#38bdf8" />
+          {/* Other leg slightly lifted forward */}
+          <path d="M 90 55 L 115 70" stroke="#94a3b8" strokeWidth="4.5" strokeLinecap="round" />
+          {/* Arms out forward */}
+          <path d="M 90 35 L 125 35" stroke="#cbd5e1" strokeWidth="3.5" strokeLinecap="round" />
+          <text x="100" y="108" fill="#94a3b8" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Подготовка: одноопорная стойка, баланс
+          </text>
+        </g>
+      );
+
+    case 'cossack_squat':
+      return (
+        <g>
+          <line x1="15" y1="95" x2="185" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Wide stance */}
+          <path d="M 50 95 L 100 65 L 150 95" stroke="#94a3b8" strokeWidth="5.5" fill="none" strokeLinecap="round" />
+          <path d="M 100 65 L 100 35" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          <circle cx="100" cy="26" r="7.5" fill="#38bdf8" />
+          <path d="M 100 48 L 90 58 L 110 58" stroke="#cbd5e1" strokeWidth="3" fill="none" strokeLinecap="round" />
+          <text x="100" y="108" fill="#94a3b8" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Широкая стойка: стопы шире плеч
+          </text>
+        </g>
+      );
+
+    case 'bridge_pose':
+      return (
+        <g>
+          <line x1="20" y1="95" x2="180" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Supine on floor with knees bent */}
+          <path d="M 40 92 L 100 92" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          <circle cx="32" cy="89" r="7" fill="#38bdf8" />
+          {/* Feet flat on floor */}
+          <path d="M 100 92 L 125 65 L 140 95" stroke="#94a3b8" strokeWidth="5.5" fill="none" strokeLinecap="round" />
+          {/* Arms alongside body */}
+          <path d="M 60 92 L 95 92" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
+          <text x="100" y="108" fill="#94a3b8" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Исходное: стопы у ягодиц, плечи прижаты
+          </text>
+        </g>
+      );
+
+    case 'legs_up_wall':
+      return (
+        <g>
+          <line x1="20" y1="95" x2="180" y2="95" stroke="#334155" strokeWidth="2" />
+          <line x1="145" y1="15" x2="145" y2="95" stroke="#64748b" strokeWidth="4" />
+          {/* Torso on floor approaching wall */}
+          <path d="M 60 92 L 135 92" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          <circle cx="50" cy="89" r="7" fill="#38bdf8" />
+          {/* Knees bent near wall */}
+          <path d="M 135 92 L 140 70 L 145 75" stroke="#94a3b8" strokeWidth="5" strokeLinecap="round" />
+          <text x="100" y="108" fill="#94a3b8" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Таз к стене: подготовка к подъему ног
+          </text>
+        </g>
+      );
+
+    case 'wall_sit':
+      return (
+        <g>
+          <line x1="20" y1="95" x2="180" y2="95" stroke="#334155" strokeWidth="2" />
+          <line x1="60" y1="15" x2="60" y2="95" stroke="#64748b" strokeWidth="4" />
+          {/* Standing tall against wall */}
+          <path d="M 75 95 L 65 60 L 65 25" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          <circle cx="65" cy="18" r="7" fill="#38bdf8" />
+          <text x="100" y="108" fill="#94a3b8" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Спина у стены: стопы на 30-40 см вперед
+          </text>
+        </g>
+      );
+
+    default:
+      return (
+        <g>
+          <line x1="20" y1="95" x2="180" y2="95" stroke="#334155" strokeWidth="2" strokeDasharray="3 3" />
+          {/* Neutral anatomical figure setup */}
+          <path d="M 85 95 L 85 60 L 100 60 L 115 60 L 115 95" stroke="#94a3b8" strokeWidth="5" fill="none" strokeLinecap="round" />
+          <path d="M 100 60 L 100 28" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          <circle cx="100" cy="20" r="7" fill="#38bdf8" />
+          <path d="M 100 38 L 75 55" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
+          <path d="M 100 38 L 125 55" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
+          <text x="100" y="108" fill="#94a3b8" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Фаза 1: Подготовка и балансировка
+          </text>
+        </g>
+      );
+  }
+}
+
+/**
+ * Render precise Phase 2 SVG graphics (Peak tension / Target posture)
+ */
+function renderPhase2Svg(poseKey: PoseKey) {
+  switch (poseKey) {
+    case 'lizard_lunge':
+      return (
+        <g>
+          <line x1="15" y1="95" x2="185" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Rear leg long back with hips sinking low */}
+          <path d="M 25 93 L 70 85 L 105 85" stroke="#94a3b8" strokeWidth="5.5" fill="none" strokeLinecap="round" />
+          {/* Hip tension highlight */}
+          <circle cx="105" cy="85" r="7" stroke="#f43f5e" strokeWidth="2.5" fill="none" className="animate-ping" />
+          {/* Front leg hugging shoulder, knee 90 deg */}
+          <path d="M 105 85 L 145 85 L 145 95" stroke="#38bdf8" strokeWidth="6" fill="none" strokeLinecap="round" />
+          {/* Torso horizontal flat near floor */}
+          <path d="M 105 85 L 140 70" stroke="#06b6d4" strokeWidth="6.5" strokeLinecap="round" />
+          <circle cx="147" cy="65" r="7" fill="#38bdf8" />
+          {/* Forearms resting flat on ground! */}
+          <path d="M 130 75 L 120 95 L 140 95" stroke="#cbd5e1" strokeWidth="3.5" fill="none" strokeLinecap="round" />
+          {/* Active groin stretch band */}
+          <path d="M 80 85 L 125 85" stroke="#f43f5e" strokeWidth="4" strokeLinecap="round" className="animate-pulse" />
+          <text x="100" y="108" fill="#f43f5e" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Ящерица: предплечья на полу, таз в пол
+          </text>
+        </g>
+      );
+
+    case 'couch_stretch':
+      return (
+        <g>
+          <line x1="35" y1="20" x2="35" y2="95" stroke="#64748b" strokeWidth="4" />
+          <line x1="20" y1="95" x2="180" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Back shin against wall */}
+          <path d="M 40 92 L 38 48" stroke="#94a3b8" strokeWidth="5" strokeLinecap="round" />
+          <circle cx="40" cy="92" r="5" fill="#f43f5e" />
+          {/* Intense quad tension highlight */}
+          <path d="M 40 92 L 72 70" stroke="#f43f5e" strokeWidth="6" strokeLinecap="round" className="animate-pulse" />
+          {/* Front lunge foot */}
+          <path d="M 72 70 L 120 70 L 120 95" stroke="#38bdf8" strokeWidth="5" fill="none" strokeLinecap="round" />
+          {/* Upright vertical torso leaning back */}
+          <path d="M 72 70 L 70 32" stroke="#06b6d4" strokeWidth="7" strokeLinecap="round" />
+          <circle cx="70" cy="24" r="7.5" fill="#38bdf8" />
+          <path d="M 70 45 L 85 60" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
+          <text x="100" y="108" fill="#f43f5e" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Квадрицепс: корпус вертикально, ягодица сжата
+          </text>
+        </g>
+      );
+
+    case 'half_kneeling_lunge':
+      return (
+        <g>
+          <line x1="25" y1="95" x2="175" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Back leg kneeling with pelvis driven forward */}
+          <path d="M 55 95 L 55 72 L 95 68" stroke="#94a3b8" strokeWidth="5" fill="none" strokeLinecap="round" />
+          {/* Psoas stretch highlight */}
+          <path d="M 55 78 L 95 68" stroke="#f43f5e" strokeWidth="4.5" strokeLinecap="round" className="animate-pulse" />
+          {/* Front foot lunge */}
+          <path d="M 95 68 L 135 68 L 135 95" stroke="#38bdf8" strokeWidth="5" fill="none" strokeLinecap="round" />
+          {/* Torso tall with arm overhead */}
+          <path d="M 95 68 L 95 35" stroke="#06b6d4" strokeWidth="6.5" strokeLinecap="round" />
+          <circle cx="95" cy="27" r="7.5" fill="#38bdf8" />
+          <path d="M 95 40 L 95 12" stroke="#38bdf8" strokeWidth="3.5" strokeLinecap="round" />
+          <text x="100" y="108" fill="#38bdf8" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Растяжка сгибателей: подача таза + рука вверх
+          </text>
+        </g>
+      );
+
+    case 'hamstring_lying_strap':
+      return (
+        <g>
+          <line x1="20" y1="92" x2="180" y2="92" stroke="#334155" strokeWidth="2" />
+          {/* Supine body flat */}
+          <path d="M 40 88 L 115 88" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          <circle cx="33" cy="85" r="7" fill="#38bdf8" />
+          <path d="M 115 88 L 165 88" stroke="#64748b" strokeWidth="5" strokeLinecap="round" />
+          {/* Leg pulled straight up 90°+ towards face! */}
+          <path d="M 115 88 L 110 32" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          {/* Hamstring intense tension band */}
+          <path d="M 113 82 L 111 45" stroke="#f43f5e" strokeWidth="5" strokeLinecap="round" className="animate-pulse" />
+          {/* Flexed foot */}
+          <path d="M 110 32 L 98 32" stroke="#38bdf8" strokeWidth="4.5" strokeLinecap="round" />
+          {/* Hands gripping strap tight */}
+          <path d="M 80 85 L 98 50" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
+          <line x1="98" y1="50" x2="105" y2="32" stroke="#f59e0b" strokeWidth="2" />
+          <text x="100" y="108" fill="#f43f5e" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            PNF-угол 90°+: изометрия 6с и дотяжка
+          </text>
+        </g>
+      );
+
+    case 'hamstring_seated_fold':
+      return (
+        <g>
+          <line x1="20" y1="92" x2="180" y2="92" stroke="#334155" strokeWidth="2" />
+          {/* Legs flat on floor */}
+          <path d="M 45 88 L 145 88" stroke="#94a3b8" strokeWidth="6" strokeLinecap="round" />
+          {/* Deep fold: torso flat along thighs */}
+          <path d="M 45 88 L 125 78" stroke="#06b6d4" strokeWidth="6.5" strokeLinecap="round" />
+          <circle cx="132" cy="74" r="7" fill="#38bdf8" />
+          {/* Arms clasped around feet */}
+          <path d="M 110 78 L 145 82" stroke="#cbd5e1" strokeWidth="3.5" strokeLinecap="round" />
+          {/* Posterior chain tension line */}
+          <path d="M 55 86 L 135 86" stroke="#f43f5e" strokeWidth="4" strokeLinecap="round" className="animate-pulse" />
+          <text x="100" y="108" fill="#f43f5e" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Пашчимоттанасана: живот на бедрах
+          </text>
+        </g>
+      );
+
+    case 'stork_balance':
+    case 'general_balance':
+      return (
+        <g>
+          <line x1="40" y1="95" x2="160" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Single support foot tripod with proprioception waves */}
+          <circle cx="100" cy="95" r="4.5" fill="#38bdf8" />
+          <circle cx="100" cy="95" r="8" stroke="#38bdf8" strokeWidth="1.5" fill="none" strokeDasharray="2 2" className="animate-spin" />
+          {/* Standing leg vertical */}
+          <path d="M 100 95 L 100 60" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          {/* Lifted leg 90 deg knee */}
+          <path d="M 100 60 L 128 60 L 128 80" stroke="#f59e0b" strokeWidth="5" fill="none" strokeLinecap="round" />
+          {/* Torso & Head with closed eyes cue */}
+          <path d="M 100 60 L 100 28" stroke="#06b6d4" strokeWidth="7" strokeLinecap="round" />
+          <circle cx="100" cy="20" r="7.5" fill="#38bdf8" />
+          {/* Balance arms wide */}
+          <path d="M 75 38 L 100 35 L 125 38" stroke="#cbd5e1" strokeWidth="3.5" strokeLinecap="round" />
+          <text x="100" y="108" fill="#10b981" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Аист: бедро 90°, вертикаль, закрытые глаза
+          </text>
+        </g>
+      );
+
+    case 'warrior_3_airplane':
+      return (
+        <g>
+          <line x1="30" y1="95" x2="170" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Standing leg vertical */}
+          <path d="M 90 95 L 90 55" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          {/* Standing hamstring active band */}
+          <path d="M 90 85 L 90 62" stroke="#f43f5e" strokeWidth="4" strokeLinecap="round" className="animate-pulse" />
+          {/* Pure horizontal T line from back foot to torso and head */}
+          <path d="M 35 52 L 90 55 L 148 52" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          <circle cx="155" cy="50" r="7" fill="#38bdf8" />
+          {/* Arms reaching forward in airplane wing */}
+          <path d="M 140 52 L 168 48" stroke="#cbd5e1" strokeWidth="3.5" strokeLinecap="round" />
+          <text x="100" y="108" fill="#38bdf8" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Воин III: ровная буква Т параллельно полу
+          </text>
+        </g>
+      );
+
+    case 'single_leg_reach':
+      return (
+        <g>
+          <line x1="30" y1="95" x2="170" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Standing leg hinged */}
+          <path d="M 95 95 L 95 62" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          <path d="M 95 85 L 95 65" stroke="#f43f5e" strokeWidth="4" strokeLinecap="round" className="animate-pulse" />
+          {/* Rear leg extending behind */}
+          <path d="M 95 62 L 45 45" stroke="#94a3b8" strokeWidth="5" strokeLinecap="round" />
+          {/* Torso hinged reaching down */}
+          <path d="M 95 62 L 135 70" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          <circle cx="140" cy="65" r="7" fill="#38bdf8" />
+          {/* Arm reaching to floor touch */}
+          <path d="M 130 68 L 130 95" stroke="#f59e0b" strokeWidth="3.5" strokeLinecap="round" />
+          <circle cx="130" cy="95" r="3" fill="#f59e0b" />
+          <text x="100" y="108" fill="#f59e0b" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Касание пола: стабильная стопа, таз ровно
+          </text>
+        </g>
+      );
+
+    case 'pigeon_sleeping':
+      return (
+        <g>
+          <line x1="20" y1="95" x2="180" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Front leg folded under pelvis */}
+          <path d="M 85 92 L 120 92 L 105 84" stroke="#94a3b8" strokeWidth="5.5" fill="none" strokeLinecap="round" />
+          {/* Glute release glow */}
+          <circle cx="95" cy="90" r="7" fill="#f43f5e" className="animate-pulse" />
+          {/* Rear leg fully extended long back */}
+          <path d="M 85 92 L 25 93" stroke="#94a3b8" strokeWidth="5" strokeLinecap="round" />
+          {/* Torso folded flat forward over front shin */}
+          <path d="M 95 90 L 140 88" stroke="#06b6d4" strokeWidth="6.5" strokeLinecap="round" />
+          <circle cx="147" cy="85" r="7" fill="#38bdf8" />
+          {/* Arms extended on floor in front */}
+          <path d="M 135 88 L 170 88" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
+          <text x="100" y="108" fill="#f59e0b" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Спящий голубь: грудь на голени, расслабление
+          </text>
+        </g>
+      );
+
+    case 'cat_cow':
+      return (
+        <g>
+          <line x1="20" y1="95" x2="180" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Arms and Thighs vertical */}
+          <path d="M 60 95 L 60 65" stroke="#94a3b8" strokeWidth="5" strokeLinecap="round" />
+          <path d="M 140 95 L 140 65" stroke="#94a3b8" strokeWidth="5" strokeLinecap="round" />
+          {/* Spine arched strongly UPWARD like a cat dome */}
+          <path d="M 60 65 Q 100 38 140 65" stroke="#06b6d4" strokeWidth="6.5" fill="none" strokeLinecap="round" />
+          {/* Head tucked down towards chest */}
+          <path d="M 140 65 L 148 78" stroke="#06b6d4" strokeWidth="5" strokeLinecap="round" />
+          <circle cx="150" cy="84" r="7" fill="#38bdf8" />
+          {/* Spinal articulation glow */}
+          <path d="M 75 52 Q 100 42 125 52" stroke="#f43f5e" strokeWidth="3" fill="none" strokeLinecap="round" className="animate-pulse" />
+          <text x="100" y="108" fill="#06b6d4" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Фаза Кошка: выдох, купол спины, пупок внутрь
+          </text>
+        </g>
+      );
+
+    case 'calf_ankle_raise':
+      return (
+        <g>
+          <line x1="30" y1="95" x2="170" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Raised high on balls of feet */}
+          <path d="M 95 86 L 95 48" stroke="#06b6d4" strokeWidth="5.5" strokeLinecap="round" />
+          <path d="M 105 86 L 105 48" stroke="#06b6d4" strokeWidth="5.5" strokeLinecap="round" />
+          {/* High heels off ground */}
+          <circle cx="95" cy="94" r="3.5" fill="#38bdf8" />
+          <circle cx="105" cy="94" r="3.5" fill="#38bdf8" />
+          {/* Achilles and calf tension pulse */}
+          <path d="M 95 86 L 95 65" stroke="#f43f5e" strokeWidth="4.5" strokeLinecap="round" className="animate-pulse" />
+          <path d="M 105 86 L 105 65" stroke="#f43f5e" strokeWidth="4.5" strokeLinecap="round" className="animate-pulse" />
+          {/* Tall body */}
+          <path d="M 100 48 L 100 18" stroke="#06b6d4" strokeWidth="6.5" strokeLinecap="round" />
+          <circle cx="100" cy="11" r="7.5" fill="#38bdf8" />
+          <text x="100" y="108" fill="#f43f5e" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Пик подъема: максимальное сжатие икр
+          </text>
+        </g>
+      );
+
+    case 'middle_split':
+      return (
+        <g>
+          <line x1="10" y1="95" x2="190" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* 180 deg wide legs */}
+          <path d="M 25 90 L 100 88 L 175 90" stroke="#94a3b8" strokeWidth="6" strokeLinecap="round" />
+          {/* Adductor tension line */}
+          <path d="M 35 90 L 100 88 L 165 90" stroke="#f43f5e" strokeWidth="4" strokeLinecap="round" className="animate-pulse" />
+          {/* Low torso on forearms */}
+          <path d="M 100 88 L 100 62" stroke="#06b6d4" strokeWidth="6.5" strokeLinecap="round" />
+          <circle cx="100" cy="54" r="7" fill="#38bdf8" />
+          <path d="M 100 68 L 78 80" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
+          <path d="M 100 68 L 122 80" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
+          <text x="100" y="108" fill="#f43f5e" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Поперечный шпагат: 180° в тазобедренных
+          </text>
+        </g>
+      );
+
+    case 'front_split':
+      return (
+        <g>
+          <line x1="15" y1="95" x2="185" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Front leg straight forward */}
+          <path d="M 100 86 L 168 92" stroke="#94a3b8" strokeWidth="6" strokeLinecap="round" />
+          <path d="M 110 86 L 162 92" stroke="#f43f5e" strokeWidth="4" strokeLinecap="round" className="animate-pulse" />
+          {/* Back leg straight backward */}
+          <path d="M 100 86 L 32 92" stroke="#94a3b8" strokeWidth="6" strokeLinecap="round" />
+          <path d="M 90 86 L 40 92" stroke="#f59e0b" strokeWidth="4" strokeLinecap="round" />
+          {/* Upright spine */}
+          <path d="M 100 86 L 100 45" stroke="#06b6d4" strokeWidth="7" strokeLinecap="round" />
+          <circle cx="100" cy="36" r="7.5" fill="#38bdf8" />
+          {/* Support blocks or hands */}
+          <path d="M 100 55 L 85 86" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
+          <path d="M 100 55 L 115 86" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
+          <text x="100" y="108" fill="#06b6d4" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Продольный шпагат: закрытый таз, прямые ноги
+          </text>
+        </g>
+      );
+
+    case 'pancake_straddle':
+      return (
+        <g>
+          <line x1="15" y1="95" x2="185" y2="95" stroke="#334155" strokeWidth="2" />
+          <path d="M 35 90 L 100 88 L 165 90" stroke="#94a3b8" strokeWidth="6" strokeLinecap="round" />
+          {/* Torso folded flat on floor between legs */}
+          <path d="M 100 88 L 100 68" stroke="#06b6d4" strokeWidth="6.5" strokeLinecap="round" />
+          <circle cx="100" cy="60" r="7" fill="#38bdf8" />
+          {/* Arms reaching far forward */}
+          <path d="M 100 70 L 60 78" stroke="#cbd5e1" strokeWidth="3.5" strokeLinecap="round" />
+          <path d="M 100 70 L 140 78" stroke="#cbd5e1" strokeWidth="3.5" strokeLinecap="round" />
+          <text x="100" y="108" fill="#f43f5e" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Блинчик: живот и грудь на полу
+          </text>
+        </g>
+      );
+
+    case 'butterfly':
+      return (
+        <g>
+          <line x1="20" y1="95" x2="180" y2="95" stroke="#334155" strokeWidth="2" />
+          <circle cx="100" cy="90" r="4" fill="#38bdf8" />
+          {/* Knees pressed down close to floor */}
+          <path d="M 100 88 Q 65 80 75 92 L 100 92" stroke="#94a3b8" strokeWidth="5" fill="none" strokeLinecap="round" />
+          <path d="M 100 88 Q 135 80 125 92 L 100 92" stroke="#94a3b8" strokeWidth="5" fill="none" strokeLinecap="round" />
+          {/* Groin release */}
+          <path d="M 80 88 L 120 88" stroke="#f43f5e" strokeWidth="4" className="animate-pulse" />
+          {/* Gentle forward hinge with flat back */}
+          <path d="M 100 88 L 100 55" stroke="#06b6d4" strokeWidth="6.5" strokeLinecap="round" />
+          <circle cx="100" cy="46" r="7.5" fill="#38bdf8" />
+          <text x="100" y="108" fill="#f59e0b" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Бабочка: колени в пол, наклон от таза
+          </text>
+        </g>
+      );
+
+    case 'frog_pose':
+      return (
+        <g>
+          <line x1="15" y1="95" x2="185" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Knees wide at 90 deg, inner feet on floor */}
+          <path d="M 40 92 L 75 92 L 100 85 L 125 92 L 160 92" stroke="#94a3b8" strokeWidth="5.5" fill="none" strokeLinecap="round" />
+          <circle cx="75" cy="92" r="5" fill="#f43f5e" className="animate-pulse" />
+          <circle cx="125" cy="92" r="5" fill="#f43f5e" className="animate-pulse" />
+          {/* Pelvis sinking back between hips */}
+          <path d="M 100 85 L 100 65" stroke="#06b6d4" strokeWidth="6.5" strokeLinecap="round" />
+          <circle cx="100" cy="58" r="7" fill="#38bdf8" />
+          <text x="100" y="108" fill="#f43f5e" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Лягушка: смещение таза назад между колен
+          </text>
+        </g>
+      );
+
+    case 'standing_cars_hip':
+      return (
+        <g>
+          <line x1="30" y1="95" x2="170" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Standing leg */}
+          <path d="M 85 95 L 85 58" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          {/* Knee abducted out to side and rotating back (arc) */}
+          <path d="M 85 58 L 130 52 L 125 72" stroke="#38bdf8" strokeWidth="5" fill="none" strokeLinecap="round" />
+          {/* 3D rotation circular arrow */}
+          <circle cx="115" cy="60" r="14" stroke="#f43f5e" strokeWidth="2" fill="none" strokeDasharray="3 3" className="animate-spin" />
+          {/* Torso strictly upright */}
+          <path d="M 85 58 L 85 28" stroke="#06b6d4" strokeWidth="6.5" strokeLinecap="round" />
+          <circle cx="85" cy="20" r="7.5" fill="#38bdf8" />
+          <text x="100" y="108" fill="#38bdf8" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            CARs: круговой отвод ТБС без наклона корпуса
+          </text>
+        </g>
+      );
+
+    case 'seated_90_90':
+      return (
+        <g>
+          <line x1="20" y1="95" x2="180" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Front Leg 90 deg */}
+          <path d="M 100 85 L 140 85 L 140 60" stroke="#38bdf8" strokeWidth="5.5" fill="none" strokeLinecap="round" />
+          {/* Back Leg 90 deg */}
+          <path d="M 100 85 L 60 85 L 60 100" stroke="#94a3b8" strokeWidth="5.5" fill="none" strokeLinecap="round" />
+          {/* Capsule rotation ping */}
+          <circle cx="100" cy="85" r="7" stroke="#f43f5e" strokeWidth="2.5" fill="none" className="animate-ping" />
+          {/* Torso hinged over front shin */}
+          <path d="M 100 85 L 115 55" stroke="#06b6d4" strokeWidth="6.5" strokeLinecap="round" />
+          <circle cx="120" cy="46" r="7.5" fill="#38bdf8" />
+          <text x="100" y="108" fill="#38bdf8" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            90/90: наклон к голени с прямой спиной
+          </text>
+        </g>
+      );
+
+    case 'dancer_pose':
+      return (
+        <g>
+          <line x1="30" y1="95" x2="170" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Standing leg */}
+          <path d="M 85 95 L 85 58" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          {/* Back leg kicked high and held by hand */}
+          <path d="M 85 58 L 45 42 L 60 25" stroke="#38bdf8" strokeWidth="5" fill="none" strokeLinecap="round" />
+          {/* Hand holding foot */}
+          <path d="M 95 45 L 60 25" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
+          {/* Torso arching forward */}
+          <path d="M 85 58 L 125 50" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          <circle cx="132" cy="46" r="7" fill="#38bdf8" />
+          {/* Opposite arm reaching forward */}
+          <path d="M 120 50 L 155 42" stroke="#cbd5e1" strokeWidth="3.5" strokeLinecap="round" />
+          <text x="100" y="108" fill="#f59e0b" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Поза Танцора: толчок стопы вверх и назад
+          </text>
+        </g>
+      );
+
+    case 'camel_pose':
+      return (
+        <g>
+          <line x1="25" y1="95" x2="175" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Knees on floor */}
+          <path d="M 70 95 L 70 65" stroke="#94a3b8" strokeWidth="5.5" strokeLinecap="round" />
+          {/* Hips pushed forward */}
+          <path d="M 70 65 L 85 65" stroke="#38bdf8" strokeWidth="6" strokeLinecap="round" />
+          {/* Torso strongly arched back */}
+          <path d="M 85 65 Q 100 40 85 30" stroke="#06b6d4" strokeWidth="6.5" fill="none" strokeLinecap="round" />
+          <circle cx="80" cy="24" r="7.5" fill="#38bdf8" />
+          {/* Hands reaching down to heels */}
+          <path d="M 90 40 L 70 95" stroke="#cbd5e1" strokeWidth="3.5" strokeLinecap="round" />
+          <text x="100" y="108" fill="#f43f5e" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Верблюд: грудь в потолок, таз вперед
+          </text>
+        </g>
+      );
+
+    case 'downward_dog':
+      return (
+        <g>
+          <line x1="20" y1="95" x2="180" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Legs to peak hips */}
+          <path d="M 55 95 L 98 42" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          <path d="M 60 92 L 95 48" stroke="#f43f5e" strokeWidth="4" strokeLinecap="round" className="animate-pulse" />
+          {/* Spine & Arms to hands on floor */}
+          <path d="M 98 42 L 145 95" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          <circle cx="115" cy="62" r="7" fill="#38bdf8" />
+          <text x="100" y="108" fill="#06b6d4" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Собака мордой вниз: копчик вверх, пятки в пол
+          </text>
+        </g>
+      );
+
+    case 'ankle_dorsiflexion':
+      return (
+        <g>
+          <line x1="165" y1="20" x2="165" y2="95" stroke="#64748b" strokeWidth="4" />
+          <line x1="20" y1="95" x2="180" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Front knee driving forward and touching wall without heel lifting */}
+          <path d="M 130 95 L 165 70 L 130 55" stroke="#06b6d4" strokeWidth="5.5" fill="none" strokeLinecap="round" />
+          <circle cx="130" cy="95" r="4" fill="#38bdf8" />
+          {/* Achilles tension */}
+          <path d="M 130 95 L 142 82" stroke="#f43f5e" strokeWidth="4.5" strokeLinecap="round" className="animate-pulse" />
+          {/* Back leg support */}
+          <path d="M 130 55 L 70 95" stroke="#94a3b8" strokeWidth="5" strokeLinecap="round" />
+          {/* Hands on wall */}
+          <path d="M 125 45 L 165 40" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
+          <circle cx="120" cy="30" r="7" fill="#38bdf8" />
+          <text x="100" y="108" fill="#38bdf8" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Колено касается стены, пятка плотно прижата
+          </text>
+        </g>
+      );
+
+    case 'happy_baby':
+      return (
+        <g>
+          <line x1="20" y1="92" x2="180" y2="92" stroke="#334155" strokeWidth="2" />
+          {/* Lying on back */}
+          <path d="M 45 88 L 120 88" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          <circle cx="36" cy="85" r="7" fill="#38bdf8" />
+          {/* Shins vertical 90° up to ceiling, soles flat */}
+          <path d="M 120 88 L 105 58 L 105 28" stroke="#06b6d4" strokeWidth="5.5" fill="none" strokeLinecap="round" />
+          <path d="M 120 88 L 135 58 L 135 28" stroke="#06b6d4" strokeWidth="5.5" fill="none" strokeLinecap="round" />
+          {/* Soles facing up */}
+          <line x1="98" y1="28" x2="112" y2="28" stroke="#38bdf8" strokeWidth="4" strokeLinecap="round" />
+          <line x1="128" y1="28" x2="142" y2="28" stroke="#38bdf8" strokeWidth="4" strokeLinecap="round" />
+          {/* Hands holding feet */}
+          <path d="M 75 82 L 105 28" stroke="#cbd5e1" strokeWidth="2.5" strokeLinecap="round" />
+          <path d="M 75 82 L 135 28" stroke="#cbd5e1" strokeWidth="2.5" strokeLinecap="round" />
+          {/* Hip tension highlight */}
+          <circle cx="120" cy="88" r="6" stroke="#f43f5e" strokeWidth="2" fill="none" className="animate-ping" />
+          <text x="100" y="108" fill="#f43f5e" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Стопы в потолок 90°: колени тянутся к подмышкам
+          </text>
+        </g>
+      );
+
+    case 'supine_twist':
+      return (
+        <g>
+          <line x1="20" y1="92" x2="180" y2="92" stroke="#334155" strokeWidth="2" />
+          {/* Spine grounded at shoulders */}
+          <path d="M 40 88 L 85 88" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          <circle cx="32" cy="85" r="7" fill="#38bdf8" />
+          {/* Head turned opposite */}
+          <line x1="32" y1="85" x2="25" y2="78" stroke="#cbd5e1" strokeWidth="2.5" strokeLinecap="round" />
+          {/* Arms out wide, both shoulders on floor */}
+          <line x1="60" y1="88" x2="60" y2="55" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
+          {/* Hips rotated with stacked knees dropped to floor */}
+          <path d="M 85 88 L 125 90 L 140 75" stroke="#06b6d4" strokeWidth="5.5" fill="none" strokeLinecap="round" />
+          <path d="M 125 90 L 155 90" stroke="#38bdf8" strokeWidth="5" strokeLinecap="round" />
+          {/* Spine twist pulse indicator */}
+          <path d="M 80 88 Q 95 75 110 88" stroke="#f43f5e" strokeWidth="3" fill="none" className="animate-pulse" />
+          <text x="100" y="108" fill="#f43f5e" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Скрутка ТБС: оба плеча прижаты, мягкий выдох
+          </text>
+        </g>
+      );
+
+    case 'plank_balance':
+      return (
+        <g>
+          <line x1="15" y1="95" x2="185" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Forearm plank torso and supporting leg */}
+          <path d="M 50 92 L 150 72" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          <circle cx="158" cy="68" r="7" fill="#38bdf8" />
+          {/* Forearm support */}
+          <path d="M 140 73 L 140 95 L 155 95" stroke="#cbd5e1" strokeWidth="4" fill="none" strokeLinecap="round" />
+          {/* Grounded foot */}
+          <circle cx="50" cy="92" r="3" fill="#38bdf8" />
+          {/* Elevated leg extended horizontally */}
+          <path d="M 90 84 L 35 70" stroke="#f43f5e" strokeWidth="5" strokeLinecap="round" className="animate-pulse" />
+          <circle cx="35" cy="70" r="3.5" fill="#f43f5e" />
+          {/* Core stabilization ring */}
+          <circle cx="110" cy="80" r="8" stroke="#38bdf8" strokeWidth="2" fill="none" strokeDasharray="3 3" className="animate-spin" />
+          <text x="100" y="108" fill="#f43f5e" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Антиротация: подъем ноги без перекоса таза
+          </text>
+        </g>
+      );
+
+    case 'child_pose':
+      return (
+        <g>
+          <line x1="20" y1="95" x2="180" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Pelvis resting right on heels */}
+          <path d="M 45 95 L 75 95 L 75 80" stroke="#94a3b8" strokeWidth="5.5" fill="none" strokeLinecap="round" />
+          {/* Torso folded forward resting on thighs */}
+          <path d="M 75 80 L 130 90" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          {/* Forehead on floor */}
+          <circle cx="136" cy="88" r="7" fill="#38bdf8" />
+          {/* Arms extended far forward along ground */}
+          <path d="M 105 85 L 170 95" stroke="#38bdf8" strokeWidth="3.5" strokeLinecap="round" />
+          {/* Latissimus stretch glow */}
+          <path d="M 85 82 L 140 88" stroke="#f43f5e" strokeWidth="2.5" strokeLinecap="round" className="animate-pulse" />
+          <text x="100" y="108" fill="#06b6d4" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Вытяжение позвоночника: лоб на полу, руки вперед
+          </text>
+        </g>
+      );
+
+    case 'savasana':
+      return (
+        <g>
+          <line x1="15" y1="92" x2="185" y2="92" stroke="#334155" strokeWidth="2" />
+          {/* Supine body */}
+          <path d="M 35 88 L 165 88" stroke="#06b6d4" strokeWidth="5.5" strokeLinecap="round" />
+          <circle cx="28" cy="85" r="7" fill="#38bdf8" />
+          <path d="M 75 88 L 78 72" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
+          {/* Diaphragmatic breathing sphere & pulse */}
+          <circle cx="95" cy="80" r="12" stroke="#06b6d4" strokeWidth="1.5" fill="#38bdf8" fillOpacity="0.15" className="animate-ping" />
+          <circle cx="95" cy="80" r="6" fill="#38bdf8" fillOpacity="0.4" />
+          <text x="100" y="108" fill="#38bdf8" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Полное фасциальное расслабление: глубокий вдох и покой
+          </text>
+        </g>
+      );
+
+    case 'pistol_squat':
+      return (
+        <g>
+          <line x1="20" y1="95" x2="180" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Deep squat on supporting leg */}
+          <path d="M 65 95 L 65 80 L 100 80" stroke="#38bdf8" strokeWidth="6" fill="none" strokeLinecap="round" />
+          {/* Working knee deep bend */}
+          <circle cx="65" cy="95" r="4" fill="#38bdf8" />
+          {/* Free leg fully extended forward horizontally */}
+          <path d="M 100 80 L 165 80" stroke="#f43f5e" strokeWidth="5.5" strokeLinecap="round" />
+          <circle cx="165" cy="80" r="3" fill="#f43f5e" />
+          {/* Torso upright with counterweight lean */}
+          <path d="M 100 80 L 95 45" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          <circle cx="93" cy="36" r="7" fill="#38bdf8" />
+          {/* Arms forward for balance */}
+          <path d="M 95 52 L 140 52" stroke="#cbd5e1" strokeWidth="3.5" strokeLinecap="round" />
+          <text x="100" y="108" fill="#f43f5e" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Полный присед: свободная нога параллельна полу
+          </text>
+        </g>
+      );
+
+    case 'cossack_squat':
+      return (
+        <g>
+          <line x1="15" y1="95" x2="185" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Deep squat on one foot */}
+          <path d="M 50 95 L 50 78 L 85 78" stroke="#38bdf8" strokeWidth="6" fill="none" strokeLinecap="round" />
+          <circle cx="50" cy="95" r="3.5" fill="#38bdf8" />
+          {/* Long leg extended to side resting on heel, toe up */}
+          <path d="M 85 78 L 155 93" stroke="#94a3b8" strokeWidth="5.5" strokeLinecap="round" />
+          <path d="M 155 93 L 158 82" stroke="#38bdf8" strokeWidth="4" strokeLinecap="round" />
+          {/* Adductor stretch highlight */}
+          <path d="M 85 78 L 135 88" stroke="#f43f5e" strokeWidth="4" strokeLinecap="round" className="animate-pulse" />
+          {/* Torso vertical */}
+          <path d="M 85 78 L 85 45" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          <circle cx="85" cy="36" r="7" fill="#38bdf8" />
+          {/* Hands prayer at chest */}
+          <path d="M 85 55 L 75 65 L 95 65" stroke="#cbd5e1" strokeWidth="3" fill="none" strokeLinecap="round" />
+          <text x="100" y="108" fill="#f43f5e" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Казачий присед: пятка в пол, носок вверх
+          </text>
+        </g>
+      );
+
+    case 'bridge_pose':
+      return (
+        <g>
+          <line x1="20" y1="95" x2="180" y2="95" stroke="#334155" strokeWidth="2" />
+          {/* Shoulders on floor */}
+          <circle cx="35" cy="90" r="7" fill="#38bdf8" />
+          {/* Diagonal torso thrust high */}
+          <path d="M 40 92 L 105 55" stroke="#06b6d4" strokeWidth="6.5" strokeLinecap="round" />
+          {/* Glute and hip elevation highlight */}
+          <circle cx="105" cy="55" r="6" stroke="#f43f5e" strokeWidth="2.5" fill="none" className="animate-ping" />
+          {/* Thighs from hips to knees */}
+          <path d="M 105 55 L 140 55 L 140 95" stroke="#38bdf8" strokeWidth="5.5" fill="none" strokeLinecap="round" />
+          {/* Feet grounded */}
+          <circle cx="140" cy="95" r="3.5" fill="#38bdf8" />
+          {/* Arms pressing into floor */}
+          <path d="M 50 92 L 100 92" stroke="#cbd5e1" strokeWidth="3" strokeLinecap="round" />
+          <text x="100" y="108" fill="#f43f5e" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Мост: выталкивание таза, сжатие ягодиц
+          </text>
+        </g>
+      );
+
+    case 'legs_up_wall':
+      return (
+        <g>
+          <line x1="20" y1="95" x2="180" y2="95" stroke="#334155" strokeWidth="2" />
+          <line x1="145" y1="15" x2="145" y2="95" stroke="#64748b" strokeWidth="4" />
+          {/* Torso flat on ground */}
+          <path d="M 55 92 L 140 92" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          <circle cx="45" cy="89" r="7" fill="#38bdf8" />
+          {/* Legs straight up against wall at 90° */}
+          <path d="M 140 92 L 142 30" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          {/* Feet against wall */}
+          <line x1="142" y1="30" x2="135" y2="30" stroke="#38bdf8" strokeWidth="4" strokeLinecap="round" />
+          {/* Circulation relief glow */}
+          <circle cx="142" cy="55" r="8" stroke="#38bdf8" strokeWidth="1.5" fill="none" strokeDasharray="3 3" className="animate-spin" />
+          <text x="100" y="108" fill="#38bdf8" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Випарита Карани: венозный отток & расслабление
+          </text>
+        </g>
+      );
+
+    case 'wall_sit':
+      return (
+        <g>
+          <line x1="20" y1="95" x2="180" y2="95" stroke="#334155" strokeWidth="2" />
+          <line x1="55" y1="15" x2="55" y2="95" stroke="#64748b" strokeWidth="4" />
+          {/* Back against wall at 90 deg */}
+          <path d="M 60 60 L 60 25" stroke="#06b6d4" strokeWidth="6" strokeLinecap="round" />
+          <circle cx="60" cy="18" r="7" fill="#38bdf8" />
+          {/* Thigh horizontal 90° */}
+          <path d="M 60 60 L 105 60" stroke="#f43f5e" strokeWidth="6" strokeLinecap="round" className="animate-pulse" />
+          {/* Shin vertical down to floor 90° */}
+          <path d="M 105 60 L 105 95" stroke="#38bdf8" strokeWidth="5.5" strokeLinecap="round" />
+          <circle cx="105" cy="95" r="3.5" fill="#38bdf8" />
+          {/* Isometric burn indicator */}
+          <circle cx="82" cy="60" r="7" stroke="#f43f5e" strokeWidth="2" fill="none" strokeDasharray="2 2" className="animate-spin" />
+          <text x="100" y="108" fill="#f43f5e" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Угол 90°: изометрия квадрицепса у стены
+          </text>
+        </g>
+      );
+
+    default:
+      return (
+        <g>
+          <line x1="20" y1="95" x2="180" y2="95" stroke="#334155" strokeWidth="2" strokeDasharray="3 3" />
+          <path d="M 70 95 L 100 75 L 130 95" stroke="#94a3b8" strokeWidth="5" fill="none" strokeLinecap="round" />
+          <path d="M 100 75 L 100 38" stroke="#06b6d4" strokeWidth="6.5" strokeLinecap="round" />
+          <circle cx="100" cy="28" r="7.5" fill="#38bdf8" />
+          <path d="M 70 48 L 100 42 L 135 32" stroke="#f59e0b" strokeWidth="4" strokeLinecap="round" />
+          <circle cx="100" cy="55" r="10" stroke="#f43f5e" strokeWidth="2" fill="none" strokeDasharray="3 3" className="animate-spin" />
+          <text x="100" y="108" fill="#f43f5e" fontSize="7.5" textAnchor="middle" fontWeight="bold">
+            Фаза 2: Активное натяжение & PNF-фиксация
+          </text>
+        </g>
+      );
+  }
+}
+
+export const ExercisePoseIllustration: React.FC<ExercisePoseIllustrationProps> = ({
+  exerciseId,
+  exerciseName,
+  category = 'flexibility',
+  targetMuscleOrSkill = '',
+  targetMuscle = '',
+  className = '',
+  size = 'md',
+  phase = 'both',
+}) => {
+  const muscleText = targetMuscleOrSkill || targetMuscle || '';
+  const poseKey = detectPoseKey(exerciseName, muscleText, category, exerciseId);
+  const meta = POSE_METADATA[poseKey] || POSE_METADATA.general_flexibility;
+
+  // Single-phase toggle for compact views
+  const [activePhaseTab, setActivePhaseTab] = useState<1 | 2>(1);
+
+  // If size is 'sm', show single with easy switch pill, otherwise show dual cards!
+  const isDual = phase === 'both' && size !== 'sm';
+
+  // Define some placeholder actual image URLs for demonstration based on the pose key category
+  const getPlaceholderImgUrl = (stage: 1 | 2) => {
+    const categoryLower = category.toLowerCase();
+    if (categoryLower.includes('flexibility') || categoryLower.includes('pnf')) {
+        return stage === 1 ? 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&q=80&w=400&h=300' : 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&q=80&w=400&h=300';
+    } else if (categoryLower.includes('balance')) {
+        return stage === 1 ? 'https://images.unsplash.com/photo-1599901860904-17e6ed7083a0?auto=format&fit=crop&q=80&w=400&h=300' : 'https://images.unsplash.com/photo-1552196563-552592624442?auto=format&fit=crop&q=80&w=400&h=300';
+    } else if (categoryLower.includes('warmup') || categoryLower.includes('joint_prep')) {
+        return stage === 1 ? 'https://images.unsplash.com/photo-1538805060514-97d9cc17730c?auto=format&fit=crop&q=80&w=400&h=300' : 'https://images.unsplash.com/photo-1601422407692-ec4eeec1d9b3?auto=format&fit=crop&q=80&w=400&h=300';
+    } else if (categoryLower.includes('cooldown')) {
+        return stage === 1 ? 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&q=80&w=400&h=300' : 'https://images.unsplash.com/photo-1545389336-cf090694435e?auto=format&fit=crop&q=80&w=400&h=300';
+    }
+    return stage === 1 ? 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&q=80&w=400&h=300' : 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&q=80&w=400&h=300';
+  };
+
+  const containerSizes = {
+    sm: 'w-full min-h-[140px] h-36 sm:h-40',
+    md: 'w-full min-h-[180px] sm:min-h-[210px] h-48 sm:h-56',
+    lg: 'w-full min-h-[220px] sm:min-h-[260px] h-56 sm:h-64',
+  };
+
+  const renderSingleStage = (stageNum: 1 | 2, badgeLabel: string, subLabel: string) => (
+    <div
+      className={`relative rounded-2xl bg-gradient-to-br from-slate-900/95 via-slate-900/70 to-slate-950/90 border transition-all duration-300 ${
+        stageNum === 2 ? 'border-cyan-500/40 shadow-[0_0_15px_rgba(6,182,212,0.15)] ring-1 ring-cyan-500/20' : 'border-slate-700/50 shadow-lg shadow-slate-950/40 hover:border-slate-600'
+      } p-3 sm:p-4 flex flex-col items-center justify-between overflow-hidden ${containerSizes[size]}`}
+    >
+      {/* Background blueprint grid */}
+      <div className="absolute inset-0 bg-[radial-gradient(#0891b2_1px,transparent_1px)] [background-size:12px_12px] opacity-20 pointer-events-none" />
+
+      {/* Real photo replacement overlay */}
+      <div className="absolute inset-0 z-0 opacity-40 overflow-hidden pointer-events-none mix-blend-screen">
+        <img src={getPlaceholderImgUrl(stageNum)} alt="Exercise Reference" className="w-full h-full object-cover object-center grayscale opacity-60 blur-[1px] mix-blend-overlay" />
+      </div>
+
+      {/* HUD Corner Accents */}
+      <div className="absolute top-1.5 left-1.5 w-2 h-2 border-t-2 border-l-2 border-cyan-400/80" />
+      <div className="absolute top-1.5 right-1.5 w-2 h-2 border-t-2 border-r-2 border-cyan-400/80" />
+      <div className="absolute bottom-1.5 left-1.5 w-2 h-2 border-b-2 border-l-2 border-cyan-400/80" />
+      <div className="absolute bottom-1.5 right-1.5 w-2 h-2 border-b-2 border-r-2 border-cyan-400/80" />
+
+      {/* Phase Badge */}
+      <div className="relative z-10 w-full flex items-center justify-between gap-2 px-1 mb-1">
+        <span
+          className={`text-[9px] sm:text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border shrink-0 ${
+            stageNum === 1
+              ? 'bg-slate-900/90 text-slate-300 border-slate-700'
+              : 'bg-cyan-950/90 text-cyan-300 border-cyan-700/80'
+          }`}
+        >
+          {badgeLabel}
+        </span>
+        <span className="text-[9px] sm:text-[10px] text-slate-400 truncate max-w-[70%] text-right font-medium">
+          {subLabel}
+        </span>
+      </div>
+
+      {/* Scalable SVG Stage with balanced padding to prevent any edge clipping */}
+      <div className="relative z-10 w-full flex-1 flex items-center justify-center p-1 min-h-0">
+        <svg
+          viewBox="-8 -6 216 128"
+          preserveAspectRatio="xMidYMid meet"
+          className="w-full h-full max-h-full max-w-full drop-shadow-[0_0_8px_rgba(6,182,212,0.25)] select-none"
+        >
+          {stageNum === 1 ? renderPhase1Svg(poseKey) : renderPhase2Svg(poseKey)}
+        </svg>
+      </div>
+    </div>
+  );
+
+  if (isDual) {
+    return (
+      <div className={`w-full space-y-2 ${className}`}>
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+            <h4 className="text-xs font-black uppercase tracking-wider text-white">
+              Кинематическая схема: {meta.title}
+            </h4>
+          </div>
+          <span className="text-[10px] text-cyan-400/80 font-mono">2-х фазная биомеханика</span>
+        </div>
+
+        {/* 2 Images side-by-side: Phase 1 & Phase 2 */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 w-full">
+          {renderSingleStage(1, meta.phase1Title, meta.phase1Cue)}
+          {renderSingleStage(2, meta.phase2Title, meta.phase2Cue)}
+        </div>
+      </div>
+    );
+  }
+
+  // Single / Compact size mode with toggle tabs
+  const currentPhase = phase === 'both' ? activePhaseTab : phase;
+
+  return (
+    <div className={`w-full space-y-1.5 ${className}`}>
+      {/* Tab Switcher if in 'both' mode on small screen */}
+      {phase === 'both' && (
+        <div className="flex items-center justify-between px-1 mb-1">
+          <span className="text-[10px] font-extrabold text-slate-300 truncate">
+            {meta.title}
+          </span>
+          <div className="flex items-center gap-1 bg-slate-950 p-0.5 rounded-lg border border-slate-800">
+            <button
+              type="button"
+              onClick={() => setActivePhaseTab(1)}
+              className={`px-2 py-0.5 rounded text-[10px] font-black transition-all ${
+                activePhaseTab === 1
+                  ? 'bg-cyan-500 text-slate-950 shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              1. Старт
+            </button>
+            <button
+              type="button"
+              onClick={() => setActivePhaseTab(2)}
+              className={`px-2 py-0.5 rounded text-[10px] font-black transition-all ${
+                activePhaseTab === 2
+                  ? 'bg-cyan-500 text-slate-950 shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              2. Пик PNF
+            </button>
+          </div>
+        </div>
+      )}
+
+      {currentPhase === 1
+        ? renderSingleStage(1, meta.phase1Title, meta.phase1Cue)
+        : renderSingleStage(2, meta.phase2Title, meta.phase2Cue)}
+    </div>
+  );
+};

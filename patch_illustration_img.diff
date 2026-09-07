@@ -1,0 +1,44 @@
+--- /app/src/components/ExercisePoseIllustration.tsx
++++ /app/src/components/ExercisePoseIllustration.tsx
+@@ -104,11 +104,32 @@
+   const poseKey = detectPoseKey(exerciseName, muscleText, category, exerciseId);
+   const meta = POSE_METADATA[poseKey] || POSE_METADATA.general_flexibility;
+
+   // Single-phase toggle for compact views
+   const [activePhaseTab, setActivePhaseTab] = useState<1 | 2>(1);
+
+   // If size is 'sm', show single with easy switch pill, otherwise show dual cards!
+   const isDual = phase === 'both' && size !== 'sm';
+
++  // Define some placeholder actual image URLs for demonstration based on the pose key category
++  const getPlaceholderImgUrl = (stage: 1 | 2) => {
++    const categoryLower = category.toLowerCase();
++    if (categoryLower.includes('flexibility') || categoryLower.includes('pnf')) {
++        return stage === 1 ? 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&q=80&w=400&h=300' : 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&q=80&w=400&h=300';
++    } else if (categoryLower.includes('balance')) {
++        return stage === 1 ? 'https://images.unsplash.com/photo-1599901860904-17e6ed7083a0?auto=format&fit=crop&q=80&w=400&h=300' : 'https://images.unsplash.com/photo-1552196563-552592624442?auto=format&fit=crop&q=80&w=400&h=300';
++    } else if (categoryLower.includes('warmup') || categoryLower.includes('joint_prep')) {
++        return stage === 1 ? 'https://images.unsplash.com/photo-1538805060514-97d9cc17730c?auto=format&fit=crop&q=80&w=400&h=300' : 'https://images.unsplash.com/photo-1601422407692-ec4eeec1d9b3?auto=format&fit=crop&q=80&w=400&h=300';
++    } else if (categoryLower.includes('cooldown')) {
++        return stage === 1 ? 'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&q=80&w=400&h=300' : 'https://images.unsplash.com/photo-1545389336-cf090694435e?auto=format&fit=crop&q=80&w=400&h=300';
++    }
++    return stage === 1 ? 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&q=80&w=400&h=300' : 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&q=80&w=400&h=300';
++  };
++
+   const containerSizes = {
+     sm: 'w-full min-h-[140px] h-36 sm:h-40',
+     md: 'w-full min-h-[180px] sm:min-h-[210px] h-48 sm:h-56',
+@@ -118,2 +139,4 @@
+     <div
+       className={`relative rounded-2xl bg-gradient-to-br from-slate-900/95 via-slate-900/70 to-slate-950/90 border transition-all duration-300 ${
+         stageNum === 2 ? 'border-cyan-500/40 shadow-[0_0_15px_rgba(6,182,212,0.15)] ring-1 ring-cyan-500/20' : 'border-slate-700/50 shadow-lg shadow-slate-950/40 hover:border-slate-600'
+       } p-3 sm:p-4 flex flex-col items-center justify-between overflow-hidden ${containerSizes[size]}`}
+     >
+       {/* Background blueprint grid */}
+       <div className="absolute inset-0 bg-[radial-gradient(#0891b2_1px,transparent_1px)] [background-size:12px_12px] opacity-20 pointer-events-none" />
++
++      {/* Real photo replacement overlay */}
++      <div className="absolute inset-0 z-0 opacity-40 mix-blend-screen overflow-hidden">
++        <img src={getPlaceholderImgUrl(stageNum)} alt="Exercise Reference" className="w-full h-full object-cover object-center grayscale opacity-80" />
++      </div>
++

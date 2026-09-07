@@ -1,0 +1,6 @@
+{
+  "name": "EgoFlex: AI Stretching & Balance Coach",
+  "description": "Elite AI flexibility & balance training system with initial biometric assessments, real-time AI intensity adjustments, background timer, offline execution, Samsung Health sync, and Blue Lock aesthetic.",
+  "requestFramePermissions": ["notifications"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
