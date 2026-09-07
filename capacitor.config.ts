@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'org.example.egoflex',
-  appName: 'EgoFlex',
+  appId: 'org.example.egoscheduler',
+  appName: 'EgoScheduler',
   webDir: 'dist'
 };
 
