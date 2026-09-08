@@ -511,11 +511,40 @@ export const AppInstallModal: React.FC<AppInstallModalProps> = ({
                   <a
                     href="/api/download-apk"
                     download="EgoScheduler.apk"
-                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-cyan-500/30 flex items-center justify-center gap-2 transition-all active:scale-95"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-cyan-500/30 flex items-center justify-center gap-2 transition-all active:scale-95 mb-3"
                   >
                     <Download className="w-4 h-4" />
-                    <span>Скачать APK (9.2 MB)</span>
+                    <span>Скачать APK</span>
                   </a>
+
+                  <div className="w-full text-left space-y-2 mt-4">
+                    <p className="text-[10px] text-slate-500 leading-tight">Если кнопка выше не работает (ошибка скачивания), скопируйте эту ссылку и откройте её в новой вкладке Chrome:</p>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        readOnly
+                        value={`${window.location.origin}/api/download-apk`}
+                        className="flex-1 bg-slate-900 border border-slate-700 rounded-lg py-2 px-3 text-[10px] text-slate-300 font-mono focus:outline-none focus:border-cyan-500 selection:bg-cyan-500/30"
+                      />
+                      <button
+                        onClick={(e) => {
+                          const url = `${window.location.origin}/api/download-apk`;
+                          navigator.clipboard.writeText(url);
+                          const btn = e.currentTarget;
+                          btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check text-emerald-400"><path d="M20 6 9 17l-5-5"/></svg>';
+                          setTimeout(() => {
+                            btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy text-cyan-400"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>';
+                          }, 2000);
+                        }}
+                        className="p-2.5 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition-colors"
+                        title="Копировать ссылку"
+                      >
+                        <Copy className="w-3.5 h-3.5 text-cyan-400" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
