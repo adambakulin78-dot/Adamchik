@@ -12,6 +12,16 @@ const PORT = 3000;
 
 app.use(express.json({ limit: "10mb" }));
 
+// Explicit direct download route for APKs
+app.get("/api/download-apk", (req, res) => {
+  const file = path.join(process.cwd(), "public", "schedule-app.apk");
+  if (fs.existsSync(file)) {
+    res.download(file, "EgoScheduler.apk"); // Set disposition and send it
+  } else {
+    res.status(404).send("File not found");
+  }
+});
+
 // Initialize Google GenAI
 let aiClient: GoogleGenAI | null = null;
 function getGenAI(): GoogleGenAI {

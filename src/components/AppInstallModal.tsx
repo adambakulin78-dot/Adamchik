@@ -509,8 +509,8 @@ export const AppInstallModal: React.FC<AppInstallModalProps> = ({
                     Установите приложение напрямую из скомпилированного APK файла. Это самый быстрый способ получить приложение с уведомлениями на Android.
                   </p>
                   <a
-                    href="/schedule-app.apk"
-                    download="EgoFlex-Schedule.apk"
+                    href="/api/download-apk"
+                    download="EgoScheduler.apk"
                     className="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-cyan-500/30 flex items-center justify-center gap-2 transition-all active:scale-95"
                   >
                     <Download className="w-4 h-4" />
